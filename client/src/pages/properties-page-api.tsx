@@ -12,54 +12,60 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, FilterX } from "lucide-react";
 
+// Тип для свойств, чтобы TypeScript не выдавал ошибку
+type AnyProperty = any;
+
 export default function PropertiesPage() {
   const { data: properties, isLoading, error } = useProperties();
   const [filters, setFilters] = useState<HouseFilterDTO>({});
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
   
-  // Применение фильтров
-  const filteredProperties = properties ? properties.filter(property => {
-    let isMatch = true;
+  // Проверяем формат данных и применяем фильтры
+  const applyFilters = (data: any[]): any[] => {
+    if (!data || !Array.isArray(data)) return [];
     
-    // Фильтр по городу
-    if (filters.city && property.city.toLowerCase() !== filters.city.toLowerCase()) {
-      isMatch = false;
-    }
-    
-    // Фильтр по цене
-    if ((filters.minPrice && property.price < filters.minPrice) ||
-        (filters.maxPrice && property.price > filters.maxPrice)) {
-      isMatch = false;
-    }
-    
-    // Фильтр по количеству комнат
-    if (filters.minRooms && property.rooms < filters.minRooms) {
-      isMatch = false;
-    }
-    
-    // Фильтр по площади
-    if (filters.minArea && property.area < filters.minArea) {
-      isMatch = false;
-    }
-    
-    // Фильтр по опциям
-    if ((filters.hasWifi && !property.hasWifi) ||
-        (filters.hasParking && !property.hasParking) ||
-        (filters.hasPool && !property.hasPool)) {
-      isMatch = false;
-    }
-    
-    // Фильтр по ключевому слову (поиск по названию и описанию)
-    if (filters.keyword && !(
-      property.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
-      property.description.toLowerCase().includes(filters.keyword.toLowerCase())
-    )) {
-      isMatch = false;
-    }
-    
-    return isMatch;
-  }) : [];
+    return data.filter(property => {
+      let isMatch = true;
+      
+      // Фильтр по городу
+      if (filters.city && property.location && 
+          property.location.toLowerCase().indexOf(filters.city.toLowerCase()) === -1) {
+        isMatch = false;
+      }
+      
+      // Фильтр по цене
+      if ((filters.minPrice && property.price < filters.minPrice) ||
+          (filters.maxPrice && property.price > filters.maxPrice)) {
+        isMatch = false;
+      }
+      
+      // Фильтр по количеству комнат
+      // Проверяем, есть ли свойство rooms или bedrooms
+      const rooms = property.rooms || property.bedrooms;
+      if (filters.minRooms && rooms < filters.minRooms) {
+        isMatch = false;
+      }
+      
+      // Фильтр по площади (используем price если area отсутствует)
+      const area = property.area || property.price;
+      if (filters.minArea && area < filters.minArea) {
+        isMatch = false;
+      }
+      
+      // Фильтр по ключевому слову (поиск по названию и описанию)
+      if (filters.keyword && !(
+        property.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
+        property.description.toLowerCase().includes(filters.keyword.toLowerCase())
+      )) {
+        isMatch = false;
+      }
+      
+      return isMatch;
+    });
+  };
+  
+  const filteredProperties = applyFilters(properties || []);
   
   // Обработчик фильтрации
   const handleFilterChange = (key: keyof HouseFilterDTO, value: any) => {

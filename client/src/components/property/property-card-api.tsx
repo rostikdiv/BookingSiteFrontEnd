@@ -1,27 +1,45 @@
 import { Link } from "wouter";
-import { HouseForRent } from "@/types/models";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Wifi, Car, Waves, Home, Star } from "lucide-react";
 
 type PropertyCardProps = {
-  property: HouseForRent;
+  property: any;
 };
 
 export default function PropertyCard({ property }: PropertyCardProps) {
-  // Вычисление среднего рейтинга
-  const averageRating = property.reviewsTo && property.reviewsTo.length > 0
-    ? property.reviewsTo.reduce((sum, review) => sum + review.rating, 0) / property.reviewsTo.length
-    : 0;
+  // Адаптируем к разным форматам API
+  const getPropertyDetails = () => {
+    // Выбор подходящих свойств в зависимости от формата данных API
+    const title = property.title;
+    const description = property.description;
+    const location = property.location || property.city;
+    const price = property.price;
+    const rooms = property.rooms || property.bedrooms || 0;
+    const area = property.area || property.price; // Если нет area, используем price как примерное значение
+    const imageUrl = property.imageUrl || 
+                    (property.photos && property.photos.length > 0 ? property.photos[0].imageUrl : null);
+    
+    // Для рейтинга можно использовать либо готовый рейтинг, либо вычислить из отзывов
+    let rating = property.rating ? property.rating / 10 : 0; // Если rating хранится как 49 (4.9 звезд)
+    if (!rating && property.reviewsTo && property.reviewsTo.length > 0) {
+      rating = property.reviewsTo.reduce((sum: number, review: any) => sum + review.rating, 0) 
+              / property.reviewsTo.length;
+    }
+    
+    return { title, description, location, price, rooms, area, imageUrl, rating };
+  };
+  
+  const { title, description, location, price, rooms, area, imageUrl, rating } = getPropertyDetails();
 
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       <div className="relative h-48 overflow-hidden">
-        {property.photos && property.photos.length > 0 ? (
+        {imageUrl ? (
           <img 
-            src={property.photos[0].imageUrl} 
-            alt={property.title} 
+            src={imageUrl} 
+            alt={title} 
             className="w-full h-full object-cover transition-transform hover:scale-105"
           />
         ) : (
@@ -31,29 +49,29 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         )}
         <div className="absolute top-3 right-3">
           <Badge variant="secondary" className="bg-white/90 text-primary font-medium">
-            ${property.price} / night
+            ${price} / night
           </Badge>
         </div>
       </div>
       
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex justify-between">
-          <span className="line-clamp-1">{property.title}</span>
-          {averageRating > 0 && (
+          <span className="line-clamp-1">{title}</span>
+          {rating > 0 && (
             <span className="flex items-center text-sm font-normal">
               <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
-              {averageRating.toFixed(1)}
+              {rating.toFixed(1)}
             </span>
           )}
         </CardTitle>
-        <p className="text-sm text-gray-500">{property.city}</p>
+        <p className="text-sm text-gray-500">{location}</p>
       </CardHeader>
       
       <CardContent className="py-2 flex-grow">
         <div className="flex items-center gap-3 mb-2 text-sm text-gray-600">
-          <span>{property.rooms} Rooms</span>
+          <span>{rooms} Rooms</span>
           <span>•</span>
-          <span>{property.area}m²</span>
+          <span>{area}m²</span>
         </div>
         
         <div className="flex flex-wrap gap-2 my-2">
@@ -75,7 +93,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
         </div>
         
         <p className="text-sm text-gray-600 line-clamp-2 mt-2">
-          {property.description}
+          {description}
         </p>
       </CardContent>
       

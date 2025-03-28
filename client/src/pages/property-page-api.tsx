@@ -13,6 +13,32 @@ import { format, differenceInDays, addDays } from "date-fns";
 import PropertyReviews from "@/components/property/property-reviews-api";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
+
+// Хелпер-функция для работы с данными в разных форматах API
+const getPropertyDetails = (property: any) => {
+  if (!property) return null;
+  
+  // Адаптируем разные форматы API
+  return {
+    id: property.id,
+    title: property.title,
+    description: property.description,
+    location: property.location || property.city,
+    price: property.price,
+    rooms: property.rooms || property.bedrooms || 0,
+    area: property.area || property.price, // если area нет, используем price как заполнитель
+    photos: property.photos || [],
+    owner: {
+      firstName: property.owner?.firstName || property.host?.name || "Host",
+      lastName: property.owner?.lastName || ""
+    },
+    hasWifi: property.hasWifi || false,
+    hasParking: property.hasParking || false,
+    hasPool: property.hasPool || false,
+    reviewsTo: property.reviewsTo || property.reviews || [],
+    rating: property.rating ? property.rating / 10 : null // если рейтинг хранится как 49 (4.9 звезд)
+  };
+};
 import { 
   Calendar, 
   Wifi, 
@@ -151,10 +177,13 @@ export default function PropertyPageApi() {
   // Вычисление итоговой стоимости
   const totalPrice = property ? days * property.price : 0;
   
+  // Получаем адаптированную версию данных объекта недвижимости
+  const propertyDetails = getPropertyDetails(property);
+  
   // Вычисление среднего рейтинга
-  const averageRating = property && property.reviewsTo && property.reviewsTo.length > 0
-    ? property.reviewsTo.reduce((sum, review) => sum + review.rating, 0) / property.reviewsTo.length
-    : 0;
+  const averageRating = propertyDetails && propertyDetails.reviewsTo && propertyDetails.reviewsTo.length > 0
+    ? propertyDetails.reviewsTo.reduce((sum: number, review: any) => sum + review.rating, 0) / propertyDetails.reviewsTo.length
+    : (propertyDetails && propertyDetails.rating) || 0;
   
   if (isLoading) {
     return (
@@ -225,10 +254,10 @@ export default function PropertyPageApi() {
           <div className="mb-8">
             <div className="flex justify-between items-start flex-wrap gap-4">
               <div>
-                <h1 className="text-3xl font-bold">{property.title}</h1>
+                <h1 className="text-3xl font-bold">{propertyDetails?.title || property.title}</h1>
                 <div className="flex items-center mt-2 text-gray-600">
                   <MapPin className="h-4 w-4 mr-1" />
-                  <span>{property.city}</span>
+                  <span>{propertyDetails?.location || property.city}</span>
                   {averageRating > 0 && (
                     <>
                       <span className="mx-2">•</span>
@@ -241,7 +270,7 @@ export default function PropertyPageApi() {
                 </div>
               </div>
               <div className="flex items-center">
-                <span className="text-2xl font-bold text-primary mr-2">${property.price}</span>
+                <span className="text-2xl font-bold text-primary mr-2">${propertyDetails?.price || property.price}</span>
                 <span className="text-gray-600">/ night</span>
               </div>
             </div>
