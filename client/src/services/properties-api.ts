@@ -1,34 +1,34 @@
 import { HouseForRent, HouseFilterDTO } from "@/types/models";
-import { houseAPI } from "@/services/api";
+import { propertyAPI } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
 
-// Hook для получения всех домов
+// Hook для получения всех объектов недвижимости
 export function useProperties() {
   return useQuery<HouseForRent[]>({
-    queryKey: ["houses"],
+    queryKey: ["properties"],
     queryFn: async () => {
-      return await houseAPI.getAll();
+      return await propertyAPI.getAll();
     },
   });
 }
 
-// Hook для получения дома по ID
+// Hook для получения объекта недвижимости по ID
 export function useProperty(id: number) {
   return useQuery<HouseForRent>({
-    queryKey: ["house", id],
+    queryKey: ["property", id],
     queryFn: async () => {
-      return await houseAPI.getById(id);
+      return await propertyAPI.getById(id);
     },
     enabled: !!id,
   });
 }
 
-// Hook для поиска домов с фильтрами
+// Hook для поиска объектов недвижимости с фильтрами
 export function useFilteredProperties(filters: HouseFilterDTO) {
   return useQuery<HouseForRent[]>({
-    queryKey: ["houses", "filtered", filters],
+    queryKey: ["properties", "filtered", filters],
     queryFn: async () => {
-      return await houseAPI.search(filters);
+      return await propertyAPI.search(filters);
     },
     enabled: Object.keys(filters).length > 0,
   });

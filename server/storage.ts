@@ -11,7 +11,7 @@ const MemoryStore = createMemoryStore(session);
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsername(login: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
@@ -44,7 +44,7 @@ export interface IStorage {
   getWaitlistByEmail(email: string): Promise<Waitlist | undefined>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 export class MemStorage implements IStorage {
@@ -58,7 +58,7 @@ export class MemStorage implements IStorage {
   private currentBookingId: number;
   private currentReviewId: number;
   private currentWaitlistId: number;
-  public sessionStore: session.SessionStore;
+  public sessionStore: any;
 
   constructor() {
     this.users = new Map();
@@ -118,9 +118,9 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByUsername(login: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+      (user) => user.login === login,
     );
   }
 
@@ -133,7 +133,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const now = new Date();
-    const user: User = { ...insertUser, id, createdAt: now };
+    const user: User = { 
+      ...insertUser, 
+      id, 
+      createdAt: now,
+      isHost: insertUser.isHost === undefined ? false : insertUser.isHost
+    };
     this.users.set(id, user);
     return user;
   }
@@ -172,7 +177,12 @@ export class MemStorage implements IStorage {
   async createProperty(property: InsertProperty): Promise<Property> {
     const id = this.currentPropertyId++;
     const now = new Date();
-    const newProperty: Property = { ...property, id, createdAt: now };
+    const newProperty: Property = { 
+      ...property, 
+      id, 
+      createdAt: now,
+      rating: property.rating || null
+    };
     this.properties.set(id, newProperty);
     return newProperty;
   }
@@ -210,7 +220,12 @@ export class MemStorage implements IStorage {
   async createBooking(booking: InsertBooking): Promise<Booking> {
     const id = this.currentBookingId++;
     const now = new Date();
-    const newBooking: Booking = { ...booking, id, createdAt: now };
+    const newBooking: Booking = { 
+      ...booking, 
+      id, 
+      createdAt: now,
+      status: booking.status || "pending"
+    };
     this.bookings.set(id, newBooking);
     return newBooking;
   }

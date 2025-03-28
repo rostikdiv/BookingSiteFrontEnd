@@ -5,11 +5,12 @@ import { z } from "zod";
 // User model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  login: text("login").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
-  fullName: text("full_name").notNull(),
-  avatar: text("avatar"),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phoneNumber: text("phone_number").notNull(),
   isHost: boolean("is_host").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });

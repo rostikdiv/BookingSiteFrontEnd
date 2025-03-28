@@ -20,103 +20,92 @@ const api = axios.create({
 
 // API для работы с пользователями
 export const userAPI = {
-  // Получить текущего пользователя
-  getCurrentUser: async (): Promise<User> => {
-    const response = await api.get("/user");
+  // Получить пользователя по ID
+  getById: async (id: number): Promise<User> => {
+    const response = await api.get(`/user/getById/${id}`);
     return response.data;
   },
   
   // Регистрация нового пользователя
   register: async (data: RegisterData): Promise<User> => {
-    const response = await api.post("/register", data);
+    const response = await api.post("/user", data);
     return response.data;
   },
   
   // Вход пользователя
   login: async (data: LoginData): Promise<User> => {
-    const response = await api.post("/login", data);
+    const { login, password } = data;
+    const response = await api.get(`/user/login/${login}/${password}`);
     return response.data;
-  },
-  
-  // Выход пользователя
-  logout: async (): Promise<void> => {
-    await api.post("/logout");
   },
   
   // Обновление данных пользователя
   update: async (id: number, data: Partial<User>): Promise<User> => {
-    const response = await api.put(`/users/${id}`, data);
+    const response = await api.put(`/user/edit/${id}`, data);
     return response.data;
+  },
+  
+  // Удаление аккаунта пользователя
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/user/delete/byId/${id}`);
   },
 };
 
-// API для работы с домами
-export const houseAPI = {
-  // Получить все дома
+// API для работы с недвижимостью
+export const propertyAPI = {
+  // Получить все объекты недвижимости
   getAll: async (): Promise<HouseForRent[]> => {
-    const response = await api.get("/houses");
+    const response = await api.get("/ForRent");
     return response.data;
   },
   
-  // Получить дом по ID
+  // Получить объект недвижимости по ID
   getById: async (id: number): Promise<HouseForRent> => {
-    const response = await api.get(`/houses/${id}`);
+    const response = await api.get(`/ForRent/getById/${id}`);
     return response.data;
   },
   
-  // Создать новый дом
+  // Создать новый объект недвижимости
   create: async (data: CreateHouseData): Promise<HouseForRent> => {
-    const response = await api.post("/houses", data);
+    const response = await api.post("/ForRent", data);
     return response.data;
   },
   
-  // Обновить информацию о доме
+  // Обновить информацию о недвижимости
   update: async (id: number, data: Partial<HouseForRent>): Promise<HouseForRent> => {
-    const response = await api.put(`/houses/${id}`, data);
+    const response = await api.put(`/ForRent/edit/${id}`, data);
     return response.data;
   },
   
-  // Удалить дом
+  // Удалить объект недвижимости
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/houses/${id}`);
+    await api.delete(`/ForRent/delete/byId/${id}`);
   },
   
-  // Поиск домов с фильтрами
+  // Поиск недвижимости с фильтрами
   search: async (filters: HouseFilterDTO): Promise<HouseForRent[]> => {
-    const response = await api.get("/houses/search", { params: filters });
+    const response = await api.post("/ForRent/search", filters);
     return response.data;
   },
 };
 
 // API для работы с отзывами
 export const reviewAPI = {
-  // Получить все отзывы к дому
-  getByHouseId: async (houseId: number): Promise<Review[]> => {
-    const response = await api.get(`/reviews/house/${houseId}`);
-    return response.data;
-  },
-  
-  // Получить отзывы пользователя
-  getByUserId: async (userId: number): Promise<Review[]> => {
-    const response = await api.get(`/reviews/user/${userId}`);
+  // Получить отзыв по ID
+  getById: async (id: number): Promise<Review> => {
+    const response = await api.get(`/review/${id}`);
     return response.data;
   },
   
   // Создать новый отзыв
   create: async (data: CreateReviewData): Promise<Review> => {
-    const response = await api.post("/reviews", data);
-    return response.data;
-  },
-  
-  // Обновить отзыв
-  update: async (id: number, data: Partial<Review>): Promise<Review> => {
-    const response = await api.put(`/reviews/${id}`, data);
+    const response = await api.post("/review", data);
     return response.data;
   },
   
   // Удалить отзыв
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/reviews/${id}`);
+    await api.delete(`/review/delete/byId/${id}`);
   },
 };
 
@@ -124,7 +113,7 @@ export const reviewAPI = {
 export const photoAPI = {
   // Загрузить фото для дома
   addToHouse: async (houseId: number, photoData: FormData) => {
-    const response = await api.post(`/photos/house/${houseId}`, photoData, {
+    const response = await api.post(`/api/photos/${houseId}`, photoData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -132,41 +121,25 @@ export const photoAPI = {
     return response.data;
   },
   
-  // Удалить фото
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/photos/${id}`);
+  // Получить фото по ID
+  getById: async (id: number) => {
+    const response = await api.get(`/api/photos/${id}`);
+    return response.data;
   },
 };
 
 // API для работы с бронированиями
 export const bookingAPI = {
-  // Получить все бронирования пользователя
-  getByUserId: async (userId: number): Promise<BookingOffer[]> => {
-    const response = await api.get(`/bookings/user/${userId}`);
-    return response.data;
-  },
-  
-  // Получить все бронирования для дома
-  getByHouseId: async (houseId: number): Promise<BookingOffer[]> => {
-    const response = await api.get(`/bookings/house/${houseId}`);
-    return response.data;
-  },
-  
   // Создать новое бронирование
   create: async (data: CreateBookingData): Promise<BookingOffer> => {
-    const response = await api.post("/bookings", data);
+    const response = await api.post("/bookOffer", data);
     return response.data;
   },
   
-  // Обновить бронирование
-  update: async (id: number, data: Partial<BookingOffer>): Promise<BookingOffer> => {
-    const response = await api.put(`/bookings/${id}`, data);
+  // Получить бронирование по ID
+  getById: async (id: number): Promise<BookingOffer> => {
+    const response = await api.get(`/bookOffer/getById/${id}`);
     return response.data;
-  },
-  
-  // Удалить бронирование
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/bookings/${id}`);
   },
 };
 

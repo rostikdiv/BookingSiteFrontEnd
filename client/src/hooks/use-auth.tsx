@@ -45,24 +45,10 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   
-  // Запрос данных о текущем пользователе
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
-    queryKey: ["/api/user"],
-    queryFn: async () => {
-      try {
-        return await userAPI.getCurrentUser();
-      } catch (error) {
-        if ((error as any).message?.includes("401")) {
-          return null;
-        }
-        throw error;
-      }
-    }
-  });
+  // Авторизация в системе происходит через login. Инициализируем user как null
+  const user = null; 
+  const isLoading = false;
+  const error = null;
 
   // Мутация для входа в систему
   const loginMutation = useMutation({
@@ -106,23 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Мутация для выхода из системы
+  // Мутация для выхода из системы (просто удаляем данные пользователя из локального хранилища)
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await userAPI.logout();
+      // В этом API нет метода выхода, просто удаляем данные из локального хранилища
+      queryClient.setQueryData(["/api/user"], null);
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
