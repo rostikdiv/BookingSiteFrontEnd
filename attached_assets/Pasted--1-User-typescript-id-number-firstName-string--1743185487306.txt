@@ -1,0 +1,172 @@
+### Моделі даних (класи):
+
+1. **User**:
+```typescript
+{
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  login: string;
+  password: string;
+  housesForRentList: HouseForRent[]; // Масив будинків власника
+}
+HouseForRent:
+
+typescript
+Copy
+{
+  id: number;
+  price: number;
+  area: number;
+  rooms: number;
+  title: string;
+  description: string;
+  city: string;
+  hasWifi: boolean;
+  hasParking: boolean;
+  hasPool: boolean;
+  owner: User; // Власник будинку
+  photos: Photo[]; // Масив фото
+  reviewsTo: Review[]; // Масив відгуків
+  bookingOffers: BookingOffer[]; // Масив бронювань
+}
+Review:
+
+typescript
+Copy
+{
+  id: number;
+  authorId: number; // ID автора відгуку
+  comment: string;
+  rating: number;
+  createdAt: string; // Дата у форматі ISO
+  houseForRent: HouseForRent; // Будинок, до якого належить відгук
+}
+Photo:
+
+typescript
+Copy
+{
+  id: number;
+  imageUrl: string; // URL зображення
+  house: HouseForRent; // Будинок, до якого належить фото
+}
+BookingOffer:
+
+typescript
+Copy
+{
+  id: number;
+  lessorId: number; // ID орендодавця
+  offerFrom: string; // Дата початку бронювання (ISO)
+  offerTo: string; // Дата кінця бронювання (ISO)
+  houseOffer: HouseForRent; // Будинок, який бронюють
+}
+Ендпоїнти API:
+Базовий URL: https://your-backend-url.com
+
+1. Користувачі (/user)
+POST /user - Реєстрація нового користувача
+
+GET /user/login/{login}/{password} - Логін
+
+GET /user/getById/{id} - Отримати користувача по ID
+
+PUT /user/edit/{id} - Оновити профіль
+
+DELETE /user/delete/byId/{id} - Видалити акаунт
+
+2. Будинки (/ForRent)
+GET /ForRent - Отримати всі будинки
+
+POST /ForRent - Додати новий будинок
+
+POST /ForRent/search - Пошук з фільтрами (дивись HouseFilterDTO нижче)
+
+GET /ForRent/getById/{id} - Отримати будинок по ID
+
+PUT /ForRent/edit/{id} - Оновити будинок
+
+3. Відгуки (/review)
+POST /review - Додати відгук
+
+GET /review/{id} - Отримати відгук по ID
+
+DELETE /review/delete/byId/{id} - Видалити відгук
+
+4. Фото (/api/photos)
+POST /api/photos/{houseId} - Додати фото до будинку
+
+GET /api/photos/{id} - Отримати фото по ID
+
+5. Бронювання (/bookOffer)
+POST /bookOffer - Створити бронювання
+
+GET /bookOffer/getById/{id} - Отримати бронювання по ID
+
+Додаткові моделі:
+HouseFilterDTO (для пошуку будинків):
+
+typescript
+Copy
+{
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRooms?: number;
+  minArea?: number;
+  hasWifi?: boolean;
+  hasParking?: boolean;
+  hasPool?: boolean;
+  keyword?: string; // Пошук по назві або опису
+}
+Інструкція для інтеграції:
+Створіть api.js з методами для всіх ендпоінтів
+
+Використовуйте Axios для HTTP-запитів
+
+Для автентифікації зберігайте токен у localStorage
+
+Обробляйте помилки (401, 404 тощо)
+
+Для форм використовуйте Formik або React Hook Form
+
+Приклад запиту на отримання будинків:
+
+javascript
+Copy
+async function fetchHouses(filters) {
+  const response = await axios.post('/ForRent/search', filters);
+  return response.data;
+}
+Приклад компоненту для відображення будинків:
+
+jsx
+Copy
+function HouseList() {
+  const [houses, setHouses] = useState([]);
+
+  useEffect(() => {
+    fetchHouses({ city: 'Kyiv' }).then(data => setHouses(data));
+  }, []);
+
+  return (
+    <div>
+      {houses.map(house => (
+        <HouseCard key={house.id} house={house} />
+      ))}
+    </div>
+  );
+}
+Важливо: Всі дати (offerFrom/offerTo) передаються у форматі ISO-рядка (YYYY-MM-DD). Для роботи з ними на фронтенді використовуйте new Date() або бібліотеку date-fns.
+
+Copy
+
+Цей промпт містить усю необхідну інформацію для:
+1. Налаштування Redux-стейту або React Context
+2. Створення сервісів API
+3. Роботи з формами
+4. Валідації даних
+5. Обробки помилок

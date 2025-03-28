@@ -4,58 +4,76 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { User, LoginData } from "@/types/models";
+import { userAPI } from "@/services/api";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-type AuthContextType = {
-  user: SelectUser | null;
-  isLoading: boolean;
-  error: Error | null;
-  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
-};
-
-type LoginData = {
-  username: string;
-  password: string;
-};
-
-// Extended schema for registration with password confirmation
-export const registerSchema = insertUserSchema.extend({
-  passwordConfirm: z.string().min(6, "Password confirmation must be at least 6 characters")
-}).refine((data) => data.password === data.passwordConfirm, {
-  message: "Passwords do not match",
-  path: ["passwordConfirm"],
+// Схемы валидации для форм
+export const loginSchema = z.object({
+  login: z.string().min(3, "Login must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-type RegisterData = z.infer<typeof registerSchema>;
+export const registerSchema = z.object({
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 characters"),
+  login: z.string().min(3, "Login must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
+// Типы данных для форм
+export type RegisterData = z.infer<typeof registerSchema>;
+
+// Тип данных контекста авторизации
+type AuthContextType = {
+  user: User | null;
+  isLoading: boolean;
+  error: Error | null;
+  loginMutation: UseMutationResult<User, Error, LoginData>;
+  logoutMutation: UseMutationResult<void, Error, void>;
+  registerMutation: UseMutationResult<User, Error, RegisterData>;
+};
+
+// Создаем контекст авторизации
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+// Провайдер авторизации
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  
+  // Запрос данных о текущем пользователе
   const {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | null>({
+  } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: async () => {
+      try {
+        return await userAPI.getCurrentUser();
+      } catch (error) {
+        if ((error as any).message?.includes("401")) {
+          return null;
+        }
+        throw error;
+      }
+    }
   });
 
+  // Мутация для входа в систему
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      return await userAPI.login(credentials);
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
-        title: "Login successful",
-        description: `Welcome back, ${user.fullName}!`,
+        title: "Welcome back!",
+        description: `Logged in as ${user.firstName}`,
       });
     },
     onError: (error: Error) => {
@@ -67,16 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Мутация для регистрации
   const registerMutation = useMutation({
-    mutationFn: async (credentials: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+    mutationFn: async (data: RegisterData) => {
+      return await userAPI.register(data);
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
-        title: "Registration successful",
-        description: `Welcome to StayEase, ${user.fullName}!`,
+        title: "Account created",
+        description: "Your account has been created successfully!",
       });
     },
     onError: (error: Error) => {
@@ -88,15 +106,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Мутация для выхода из системы
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await userAPI.logout();
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
       toast({
-        title: "Logout successful",
-        description: "You have been logged out",
+        title: "Logged out",
+        description: "You have been logged out successfully",
       });
     },
     onError: (error: Error) => {
@@ -113,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: user ?? null,
         isLoading,
-        error: error as Error | null,
+        error,
         loginMutation,
         logoutMutation,
         registerMutation,
@@ -124,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Хук для использования контекста авторизации
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
