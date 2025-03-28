@@ -169,16 +169,17 @@ export default function PropertyPageApi() {
     bookingMutation.mutate(data);
   };
   
+  // Получаем адаптированную версию данных объекта недвижимости
+  const propertyDetails = getPropertyDetails(property);
+  
   // Вычисление количества дней
   const days = form.watch('offerFrom') && form.watch('offerTo')
     ? differenceInDays(form.watch('offerTo'), form.watch('offerFrom'))
     : 0;
   
   // Вычисление итоговой стоимости
-  const totalPrice = property ? days * property.price : 0;
-  
-  // Получаем адаптированную версию данных объекта недвижимости
-  const propertyDetails = getPropertyDetails(property);
+  const price = propertyDetails?.price || (property?.price || 0);
+  const totalPrice = days * price;
   
   // Вычисление среднего рейтинга
   const averageRating = propertyDetails && propertyDetails.reviewsTo && propertyDetails.reviewsTo.length > 0
@@ -309,41 +310,41 @@ export default function PropertyPageApi() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
                     <div className="flex flex-col">
                       <span className="text-gray-500 text-sm">Rooms</span>
-                      <span className="font-medium">{property.rooms} Rooms</span>
+                      <span className="font-medium">{propertyDetails?.rooms || property.rooms || 0} Rooms</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-gray-500 text-sm">Area</span>
-                      <span className="font-medium">{property.area} m²</span>
+                      <span className="font-medium">{propertyDetails?.area || property.area || 0} m²</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-gray-500 text-sm">Host</span>
-                      <span className="font-medium">{property.owner.firstName} {property.owner.lastName}</span>
+                      <span className="font-medium">{propertyDetails?.owner?.firstName || "Host"} {propertyDetails?.owner?.lastName || ""}</span>
                     </div>
                   </div>
                   
                   <div className="mb-6">
                     <h3 className="text-lg font-medium mb-2">Description</h3>
                     <p className="text-gray-600">
-                      {property.description}
+                      {propertyDetails?.description || property.description || ""}
                     </p>
                   </div>
                   
                   <div>
                     <h3 className="text-lg font-medium mb-2">Amenities</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4">
-                      {property.hasWifi && (
+                      {(propertyDetails?.hasWifi || property.hasWifi) && (
                         <div className="flex items-center">
                           <Wifi className="h-5 w-5 mr-2 text-primary" />
                           <span>WiFi</span>
                         </div>
                       )}
-                      {property.hasParking && (
+                      {(propertyDetails?.hasParking || property.hasParking) && (
                         <div className="flex items-center">
                           <Car className="h-5 w-5 mr-2 text-primary" />
                           <span>Parking</span>
                         </div>
                       )}
-                      {property.hasPool && (
+                      {(propertyDetails?.hasPool || property.hasPool) && (
                         <div className="flex items-center">
                           <Waves className="h-5 w-5 mr-2 text-primary" />
                           <span>Swimming Pool</span>
@@ -450,8 +451,8 @@ export default function PropertyPageApi() {
                       {days > 0 && (
                         <div className="mt-4 space-y-3">
                           <div className="flex justify-between items-center">
-                            <span>${property.price} × {days} night{days > 1 ? 's' : ''}</span>
-                            <span>${property.price * days}</span>
+                            <span>${propertyDetails?.price || property.price || 0} × {days} night{days > 1 ? 's' : ''}</span>
+                            <span>${(propertyDetails?.price || property.price || 0) * days}</span>
                           </div>
                           <div className="border-t pt-3 mt-3">
                             <div className="flex justify-between items-center font-semibold">
