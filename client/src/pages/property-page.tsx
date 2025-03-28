@@ -20,6 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import PropertyReviews from "@/components/property/property-reviews";
 
 // Create booking form schema
 const bookingSchema = z.object({
@@ -270,6 +271,9 @@ export default function PropertyPage() {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Property Reviews */}
+              <PropertyReviews propertyId={propertyId} />
             </div>
             
             {/* Booking Form */}
