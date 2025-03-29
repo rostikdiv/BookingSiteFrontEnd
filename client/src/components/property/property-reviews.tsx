@@ -49,11 +49,16 @@ export default function PropertyReviews({ propertyId }: PropertyReviewsProps) {
   // Review submission mutation
   const reviewMutation = useMutation({
     mutationFn: async (data: ReviewFormValues) => {
+      if (!user) {
+        throw new Error("You must be logged in to submit a review");
+      }
+      
       // Convert the 1-5 star rating to 10-50 scale that the backend expects
       const reviewData = {
         ...data,
         propertyId,
-        userId: user?.id, // This will be overridden on the server with the authenticated user
+        authorId: user.id, // Add authorId explicitly from the current user
+        userId: user.id, // Keep for backward compatibility
         rating: data.rating * 10 // Convert 1-5 scale to 10-50 scale
       };
       
@@ -148,7 +153,7 @@ export default function PropertyReviews({ propertyId }: PropertyReviewsProps) {
                       <User className="h-5 w-5 text-gray-500" />
                     </div>
                     <div className="ml-3">
-                      <p className="font-medium">Guest {review.userId}</p>
+                      <p className="font-medium">Guest {review.authorId || review.userId}</p>
                       <p className="text-sm text-gray-500">
                         {review.createdAt ? format(new Date(review.createdAt), "PPP") : ""}
                       </p>
