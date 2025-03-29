@@ -50,7 +50,8 @@ import { Link } from "wouter";
 
 // Profile update schema
 const profileSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
 });
 
@@ -65,7 +66,8 @@ export default function ProfilePage() {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      fullName: user?.fullName || "",
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
       email: user?.email || "",
     },
   });
@@ -112,12 +114,15 @@ export default function ProfilePage() {
   };
 
   // Get initials for avatar
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  const getInitials = (user: any) => {
+    if (!user || (!user.firstName && !user.lastName)) {
+      return "U";
+    }
+    
+    const firstName = user.firstName || "";
+    const lastName = user.lastName || "";
+    
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
   // Get status badge color
@@ -168,11 +173,11 @@ export default function ProfilePage() {
           <div className="flex items-center mb-8">
             <Avatar className="h-16 w-16 mr-4">
               <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {getInitials(user.fullName)}
+                {getInitials(user)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{user.fullName}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{user.firstName} {user.lastName}</h1>
               <p className="text-gray-600">{user.email}</p>
             </div>
           </div>
@@ -181,9 +186,7 @@ export default function ProfilePage() {
             <TabsList className="mb-6">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="bookings">My Bookings</TabsTrigger>
-              {user.isHost && (
-                <TabsTrigger value="properties">My Properties</TabsTrigger>
-              )}
+              <TabsTrigger value="properties">My Properties</TabsTrigger>
             </TabsList>
 
             {/* Profile Tab */}
@@ -200,10 +203,23 @@ export default function ProfilePage() {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                       <FormField
                         control={form.control}
-                        name="fullName"
+                        name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -286,11 +302,11 @@ export default function ProfilePage() {
                       <div className="flex items-center">
                         <Home className="h-5 w-5 text-gray-500 mr-2" />
                         <span>
-                          Host Status: {user.isHost ? "Active" : "Inactive"}
+                          Host Status: Inactive
                         </span>
                       </div>
                       <Button variant="outline" size="sm">
-                        {user.isHost ? "Deactivate" : "Become a Host"}
+                        Become a Host
                       </Button>
                     </div>
                   </div>
@@ -365,27 +381,25 @@ export default function ProfilePage() {
               </Card>
             </TabsContent>
 
-            {/* Host Properties Tab */}
-            {user.isHost && (
-              <TabsContent value="properties">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Properties</CardTitle>
-                    <CardDescription>
-                      Manage your listed properties
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="py-8 text-center">
-                      <p className="text-gray-500 mb-4">Property management features coming soon!</p>
-                      <Button>
-                        Add New Property
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            )}
+            {/* Properties Tab */}
+            <TabsContent value="properties">
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Properties</CardTitle>
+                  <CardDescription>
+                    Manage your listed properties
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="py-8 text-center">
+                    <p className="text-gray-500 mb-4">Property management features coming soon!</p>
+                    <Button>
+                      Add New Property
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </main>
