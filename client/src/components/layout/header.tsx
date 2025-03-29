@@ -25,12 +25,15 @@ export default function Header() {
     logoutMutation.mutate();
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  const getInitials = (user: any) => {
+    if (!user || (!user.firstName && !user.lastName)) {
+      return "U";
+    }
+    
+    const firstName = user.firstName || "";
+    const lastName = user.lastName || "";
+    
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
   const navigationLinks = [
@@ -72,13 +75,15 @@ export default function Header() {
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getInitials(user.fullName)}
+                        {getInitials(user)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <div className="px-2 py-1.5 text-sm font-medium">{user.fullName}</div>
+                  <div className="px-2 py-1.5 text-sm font-medium">
+                    {user.firstName} {user.lastName}
+                  </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/profile">My Profile</Link>
@@ -86,11 +91,9 @@ export default function Header() {
                   <DropdownMenuItem asChild>
                     <Link href="/bookings">My Bookings</Link>
                   </DropdownMenuItem>
-                  {user.isHost && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/my-properties">My Properties</Link>
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-properties">My Properties</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     Logout
@@ -143,11 +146,13 @@ export default function Header() {
                 <div className="flex items-center">
                   <Avatar className="h-8 w-8 mr-3">
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(user.fullName)}
+                      {getInitials(user)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="text-base font-medium text-foreground">{user.fullName}</div>
+                    <div className="text-base font-medium text-foreground">
+                      {user.firstName} {user.lastName}
+                    </div>
                     <div className="text-sm font-medium text-muted-foreground">{user.email}</div>
                   </div>
                 </div>
@@ -158,11 +163,9 @@ export default function Header() {
                   <Link href="/bookings" onClick={() => setIsMenuOpen(false)}>
                     <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
                   </Link>
-                  {user.isHost && (
-                    <Link href="/my-properties" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-start">My Properties</Button>
-                    </Link>
-                  )}
+                  <Link href="/my-properties" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start">My Properties</Button>
+                  </Link>
                   <Button
                     variant="ghost"
                     className="w-full justify-start"
