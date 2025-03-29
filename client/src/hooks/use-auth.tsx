@@ -45,10 +45,28 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   
-  // Авторизация в системе происходит через login. Инициализируем user как null
-  const user = null; 
-  const isLoading = false;
-  const error = null;
+  // Получаем данные пользователя
+  const {
+    data: user,
+    error,
+    isLoading,
+  } = useQuery<User | null, Error>({
+    queryKey: ["/api/user"],
+    queryFn: async () => {
+      try {
+        return await userAPI.getCurrentUser();
+      } catch (error: any) {
+        console.error('Error fetching user data:', error);
+        // Если 401 Unauthorized, это нормально для неаутентифицированных пользователей
+        if (error.message.includes('Unauthorized') || error?.response?.status === 401) {
+          return null;
+        }
+        throw error;
+      }
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 минут
+  });
 
   // Мутация для входа в систему
   const loginMutation = useMutation({
@@ -92,16 +110,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Мутация для выхода из системы (просто удаляем данные пользователя из локального хранилища)
+  // Мутация для выхода из системы
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      // В этом API нет метода выхода, просто удаляем данные из локального хранилища
+      await userAPI.logout();
       queryClient.setQueryData(["/api/user"], null);
     },
     onSuccess: () => {
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });

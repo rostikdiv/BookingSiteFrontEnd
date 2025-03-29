@@ -30,45 +30,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/user/login/:login/:password", async (req, res) => {
-    try {
-      const { login, password } = req.params;
-      const user = await storage.getUserByUsername(login);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Проверяем пароль
-      // В реальности здесь должна быть хеш-проверка, но для тестирования просто сравниваем
-      if (user.password !== password) {
-        return res.status(401).json({ message: "Invalid password" });
-      }
-      
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to login" });
-    }
-  });
+  // Используем маршрут login из auth.ts
   
-  app.post("/api/user", async (req, res) => {
-    try {
-      const existingUserByUsername = await storage.getUserByUsername(req.body.login);
-      if (existingUserByUsername) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-      
-      const existingUserByEmail = await storage.getUserByEmail(req.body.email);
-      if (existingUserByEmail) {
-        return res.status(400).json({ message: "Email already exists" });
-      }
-      
-      const user = await storage.createUser(req.body);
-      res.status(201).json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create user" });
-    }
-  });
+  // Используем маршрут register из auth.ts
   
   app.put("/api/user/edit/:id", async (req, res) => {
     try {

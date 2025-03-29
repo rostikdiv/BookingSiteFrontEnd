@@ -28,14 +28,24 @@ export const userAPI = {
   
   // Регистрация нового пользователя
   register: async (data: RegisterData): Promise<User> => {
-    const response = await api.post("/user", data);
+    const response = await api.post("/register", data);
     return response.data;
   },
   
   // Вход пользователя
   login: async (data: LoginData): Promise<User> => {
-    const { login, password } = data;
-    const response = await api.get(`/user/login/${login}/${password}`);
+    const response = await api.post(`/login`, data);
+    return response.data;
+  },
+  
+  // Выход пользователя
+  logout: async (): Promise<void> => {
+    await api.post('/logout');
+  },
+  
+  // Получить текущего пользователя
+  getCurrentUser: async (): Promise<User> => {
+    const response = await api.get('/user');
     return response.data;
   },
   
