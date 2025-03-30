@@ -11,11 +11,17 @@ import {
   CreateHouseData,
   HouseFilterDTO
 } from "@/types/models";
+import {queryClient} from "@/lib/queryClient.ts";
 
 const api = axios.create({
   baseURL: "http://localhost:8080",
-  withCredentials: false, // Змінено на true для роботи з куками
+  withCredentials: true, // Має бути true
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
+
+
 
 // Додаємо інтерсептор для обробки помилок
 api.interceptors.response.use(
@@ -38,16 +44,33 @@ export const userAPI = {
   },
 
   login: async (data: LoginData): Promise<User> => {
+    // Використовуємо GET з параметрами в URL (як у вашому контролері)
     const response = await api.get(
         `/user/login/${encodeURIComponent(data.login)}/${encodeURIComponent(data.password)}`
     );
     return response.data;
   },
 
+  // api.ts
   logout: async (): Promise<void> => {
-    await api.post('/logout');
-  },
+    try {
+      // Використовуємо абсолютний URL
+      await api.post('http://localhost:8080/user/logout');
 
+      // Очищаємо всі дані
+      localStorage.clear();
+      sessionStorage.clear();
+      queryClient.clear();
+
+      // Примусове оновлення сторінки
+      window.location.href = '/auth';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Навіть при помилці очищаємо клієнтські дані
+      localStorage.clear();
+      window.location.href = '/auth';
+    }
+  },
   getCurrentUser: async (): Promise<User> => {
     const response = await api.get('/user');
     return response.data;

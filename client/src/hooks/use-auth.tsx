@@ -1,14 +1,25 @@
-import { createContext, ReactNode, useContext } from "react";
+import {createContext, ReactNode, useCallback, useContext, useEffect, useState} from "react";
 import {
   useQuery,
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
 import { User, LoginData } from "@/types/models";
-import { userAPI } from "@/services/api";
+import { userAPI} from "@/services/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import axios from "axios";
+
+
+const api = axios.create({
+  baseURL: "http://localhost:8080",
+  withCredentials: true, // Має бути true
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
 
 // Схемы валидации для форм
 export const loginSchema = z.object({
@@ -36,6 +47,8 @@ type AuthContextType = {
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
+  clearAuthData: () => void; // Нова функція
+  initializeAuth: () => Promise<void>; // Нова функція
 };
 
 // Создаем контекст авторизации
@@ -43,8 +56,9 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 // Провайдер авторизации
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
-  
+
   // Получаем данные пользователя
   const {
     data: user,
@@ -111,39 +125,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Мутация для выхода из системы
+  // use-auth.tsx
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await userAPI.logout();
-      queryClient.setQueryData(["/api/user"], null);
+      const response = await api.post('/user/logout');
+      return response.data;
     },
     onSuccess: () => {
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
+      queryClient.clear();
+      localStorage.clear();
+      window.location.href = '/auth';
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    onError: (error) => {
+      console.error('Logout error:', error);
+      // Насильно очищаємо дані навіть при помилці
+      localStorage.clear();
+      window.location.href = '/auth';
+    }
   });
 
+  const clearAuthData = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    queryClient.setQueryData(["/api/user"], null);
+  }, []);
+
+  const initializeAuth = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        clearAuthData();
+        return;
+      }
+
+      const user = await userAPI.getCurrentUser();
+      queryClient.setQueryData(["/api/user"], user);
+    } catch (error) {
+      clearAuthData();
+    } finally {
+      setInitialized(true);
+    }
+  }, [clearAuthData]);
+
+  // Оновлений ефект ініціалізації
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Блокуємо рендер додатку до завершення ініціалізації
+  if (!initialized) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user: user ?? null,
-        isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+      <AuthContext.Provider
+          value={{
+            user: user ?? null,
+            isLoading,
+            error,
+            loginMutation,
+            logoutMutation,
+            registerMutation,
+            clearAuthData,
+            initializeAuth,
+          }}
+      >
+        {children}
+      </AuthContext.Provider>
   );
 }
 
