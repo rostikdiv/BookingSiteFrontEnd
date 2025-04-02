@@ -23,24 +23,24 @@ const reviewSchema = insertReviewSchema.extend({
 type ReviewFormValues = z.infer<typeof reviewSchema>;
 
 type PropertyReviewsProps = {
-  propertyId: number;
+  houseForRentId: number;
 };
 
-export default function PropertyReviews({ propertyId }: PropertyReviewsProps) {
+export default function PropertyReviews({ houseForRentId }: PropertyReviewsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   
   // Fetch reviews for this property
   const { data: reviews, isLoading, error } = useQuery<Review[]>({
-    queryKey: [`/api/properties/${propertyId}/reviews`],
+    queryKey: [`/api/properties/${houseForRentId}/reviews`],
   });
   
   // Form setup
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
     defaultValues: {
-      propertyId,
+      houseForRentId,
       rating: 5,
       content: "",
     },
@@ -56,13 +56,13 @@ export default function PropertyReviews({ propertyId }: PropertyReviewsProps) {
       // Convert the 1-5 star rating to 10-50 scale that the backend expects
       const reviewData = {
         ...data,
-        propertyId,
+        houseForRentId,
         authorId: user.id, // Add authorId explicitly from the current user
         userId: user.id, // Keep for backward compatibility
         rating: data.rating * 10 // Convert 1-5 scale to 10-50 scale
       };
       
-      const res = await apiRequest("POST", `/api/properties/${propertyId}/reviews`, reviewData);
+      const res = await apiRequest("POST", `/api/properties/${houseForRentId}/reviews`, reviewData);
       return await res.json();
     },
     onSuccess: () => {
@@ -72,7 +72,7 @@ export default function PropertyReviews({ propertyId }: PropertyReviewsProps) {
       });
       form.reset();
       setShowForm(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/properties/${propertyId}/reviews`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/properties/${houseForRentId}/reviews`] });
     },
     onError: (error: Error) => {
       toast({

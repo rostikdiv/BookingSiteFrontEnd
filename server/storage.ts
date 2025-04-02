@@ -248,9 +248,9 @@ export class MemStorage implements IStorage {
     return this.reviews.get(id);
   }
 
-  async getReviewsByProperty(propertyId: number): Promise<Review[]> {
+  async getReviewsByProperty(houseForRentId: number): Promise<Review[]> {
     return Array.from(this.reviews.values()).filter(
-      review => review.propertyId === propertyId
+      review => review.houseForRentId === houseForRentId
     );
   }
 

@@ -64,7 +64,7 @@ export default function PropertyReviews({ propertyId }: { propertyId: number }) 
       };
       
       // Используем метод create из API сервиса
-      return await reviewAPI.create(reviewData);
+      return await reviewAPI.create(reviewData.houseForRentId, reviewData);
     },
     onSuccess: () => {
       toast({

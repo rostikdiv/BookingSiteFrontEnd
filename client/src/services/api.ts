@@ -118,19 +118,25 @@ export const propertyAPI = {
 };
 
 export const reviewAPI = {
+
   getById: async (id: number): Promise<Review> => {
     const response = await api.get(`/review/${id}`);
     return response.data;
   },
 
-  create: async (data: CreateReviewData): Promise<Review> => {
-    const response = await api.post("/review", data);
+  create: async (houseId: number, data: CreateReviewData): Promise<Review> => {
+    const response = await api.post(`/review/toReview/${houseId}`, {
+      ...data,
+      houseId // Додаємо houseId в тіло запиту
+    });
     return response.data;
   },
+
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/review/delete/byId/${id}`);
   },
+
 };
 
 export const photoAPI = {
@@ -150,9 +156,10 @@ export const photoAPI = {
 };
 
 export const bookingAPI = {
-  create: async (data: CreateBookingData): Promise<BookingOffer> => {
-    const response = await api.post("/bookOffer", data);
+  create: async (houseId: number, data: CreateBookingData): Promise<BookingOffer> => {
+    const response = await api.post(`/bookOffer/toOffer/${houseId}`, data);
     return response.data;
+
   },
 
   getById: async (id: number): Promise<BookingOffer> => {

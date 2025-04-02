@@ -61,7 +61,7 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
 // Review model
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
-  propertyId: integer("property_id").notNull(),
+  houseForRentId: integer("house_for_rent_id").notNull(),
   userId: integer("user_id").notNull(),
   content: text("content").notNull(),
   rating: integer("rating").notNull(),
