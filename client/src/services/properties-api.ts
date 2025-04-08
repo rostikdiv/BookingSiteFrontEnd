@@ -1,35 +1,39 @@
-import { HouseForRent, HouseFilterDTO } from "@/types/models";
-import { propertyAPI } from "@/services/api";
 import { useQuery } from "@tanstack/react-query";
+import { propertyAPI, reviewAPI } from "@/services/api";
+import { HouseForRent, Review, HouseFilterDTO } from "@/types/models";
 
-// Hook для получения всех объектов недвижимости
-export function useProperties() {
-  return useQuery<HouseForRent[]>({
-    queryKey: ["properties"],
-    queryFn: async () => {
-      return await propertyAPI.getAll();
-    },
-  });
-}
-
-// Hook для получения объекта недвижимости по ID
-export function useProperty(id: number) {
-  return useQuery<HouseForRent>({
+export const useProperty = (id: number) => {
+  return useQuery<HouseForRent, Error>({
     queryKey: ["property", id],
-    queryFn: async () => {
-      return await propertyAPI.getById(id);
-    },
+    queryFn: () => propertyAPI.getById(id),
     enabled: !!id,
   });
-}
+};
 
-// Hook для поиска объектов недвижимости с фильтрами
-export function useFilteredProperties(filters: HouseFilterDTO) {
-  return useQuery<HouseForRent[]>({
-    queryKey: ["properties", "filtered", filters],
-    queryFn: async () => {
-      return await propertyAPI.search(filters);
-    },
-    enabled: Object.keys(filters).length > 0,
+export const useProperties = () => {
+  return useQuery<HouseForRent[], Error>({
+    queryKey: ["properties"],
+    queryFn: () => propertyAPI.getAll(),
   });
-}
+};
+
+export const useFilteredProperties = (filters: HouseFilterDTO) => {
+  return useQuery<HouseForRent[], Error>({
+    queryKey: ["properties", filters],
+    queryFn: () => propertyAPI.search(filters),
+    enabled: !!filters,
+  });
+};
+
+// Новий хук для отримання відгуків за houseForRentId
+export const useReviews = (houseForRentId: number) => {
+  return useQuery<Review[], Error>({
+    queryKey: ["reviews", houseForRentId],
+    queryFn: async () => {
+      const reviews = await reviewAPI.getByHouseId(houseForRentId);
+      console.log("Reviews for house:", reviews);
+      return reviews;
+    },
+    enabled: !!houseForRentId,
+  });
+};

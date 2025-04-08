@@ -1,4 +1,4 @@
-// Модель пользователя
+// Модель користувача
 export interface User {
   id: number;
   firstName: string;
@@ -7,10 +7,10 @@ export interface User {
   phoneNumber: string;
   login: string;
   password: string;
-  housesForRentList?: HouseForRent[]; // Массив домов пользователя
+  housesForRentList?: HouseForRent[];
 }
 
-// Модель дома для аренды
+// Модель будинку для оренди
 export interface HouseForRent {
   id: number;
   price: number;
@@ -22,39 +22,38 @@ export interface HouseForRent {
   hasWifi: boolean;
   hasParking: boolean;
   hasPool: boolean;
-  owner: User; // Владелец дома
-  photos?: Photo[]; // Массив фотографий
-  reviewsTo?: Review[]; // Массив отзывов
-  bookingOffers?: BookingOffer[]; // Массив бронирований
+  owner: User;
+  photos?: Photo[];
+  reviewsTo?: Review[];
+  bookingOffers?: BookingOffer[];
 }
 
-// Модель отзыва
+// Модель відгуку
 export interface Review {
   id: number;
-  authorId: number; // ID автора отзыва
+  authorId: number; // Залишаємо числовий ID
   comment: string;
   rating: number;
-  createdAt: string; // Дата в формате ISO
-  houseForRent: HouseForRent; // Дом, к которому относится отзыв
+  houseForRentId: number;
+  createdAt: string;
 }
-
-// Модель фотографии
+// Модель фотографії
 export interface Photo {
   id: number;
-  imageUrl: string; // URL изображения
-  house: HouseForRent; // Дом, к которому относится фото
+  imageUrl: string;
+  house: HouseForRent;
 }
 
-// Модель предложения бронирования
+// Модель пропозиції бронювання
 export interface BookingOffer {
   id: number;
-  lessorId: number; // ID арендодателя
-  offerFrom: string; // Дата начала бронирования (ISO)
-  offerTo: string; // Дата конца бронирования (ISO)
-  houseOffer: HouseForRent; // Дом, который бронируют
+  lessorId: number;
+  offerFrom: string;
+  offerTo: string;
+  houseOffer: HouseForRent;
 }
 
-// Модель для фильтрации домов
+// Модель для фільтрації будинків
 export interface HouseFilterDTO {
   city?: string;
   minPrice?: number;
@@ -64,10 +63,10 @@ export interface HouseFilterDTO {
   hasWifi?: boolean;
   hasParking?: boolean;
   hasPool?: boolean;
-  keyword?: string; // Поиск по названию или описанию
+  keyword?: string;
 }
 
-// Модель для данных при регистрации
+// Модель для даних при реєстрації
 export interface RegisterData {
   firstName: string;
   lastName: string;
@@ -77,21 +76,20 @@ export interface RegisterData {
   password: string;
 }
 
-// Модель для данных при входе
+// Модель для даних при вході
 export interface LoginData {
   login: string;
   password: string;
 }
 
-// Модель для создания отзыва
+// Модель для створення відгуку
 export interface CreateReviewData {
-  authorId: number;
+  authorId: number; // Повертаємо authorId
   comment: string;
   rating: number;
   houseForRentId: number;
 }
-
-// Модель для создания бронирования
+// Модель для створення бронювання
 export interface CreateBookingData {
   lessorId: number;
   offerFrom: string;
@@ -99,7 +97,7 @@ export interface CreateBookingData {
   houseOfferId: number;
 }
 
-// Модель для создания дома
+// Модель для створення будинку
 export interface CreateHouseData {
   price: number;
   area: number;

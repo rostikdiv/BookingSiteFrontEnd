@@ -1,109 +1,51 @@
 import { Link } from "wouter";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { HouseForRent } from "@/types/models";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wifi, Car, Waves, Home, Star } from "lucide-react";
+import { Wifi, Car, Waves, Star } from "lucide-react";
 
-type PropertyCardProps = {
-  property: any;
-};
+interface PropertyCardProps {
+  property: HouseForRent;
+}
 
 export default function PropertyCard({ property }: PropertyCardProps) {
-  // Адаптируем к разным форматам API
-  const getPropertyDetails = () => {
-    // Выбор подходящих свойств в зависимости от формата данных API
-    const title = property.title;
-    const description = property.description;
-    const location = property.location || property.city;
-    const price = property.price;
-    const rooms = property.rooms || property.bedrooms || 0;
-    const area = property.area || property.price; // Если нет area, используем price как примерное значение
-    const imageUrl = property.imageUrl || 
-                    (property.photos && property.photos.length > 0 ? property.photos[0].imageUrl : null);
-    
-    // Для рейтинга можно использовать либо готовый рейтинг, либо вычислить из отзывов
-    let rating = property.rating ? property.rating / 10 : 0; // Если rating хранится как 49 (4.9 звезд)
-    if (!rating && property.reviewsTo && property.reviewsTo.length > 0) {
-      rating = property.reviewsTo.reduce((sum: number, review: any) => sum + review.rating, 0) 
-              / property.reviewsTo.length;
-    }
-    
-    return { title, description, location, price, rooms, area, imageUrl, rating };
-  };
-  
-  const { title, description, location, price, rooms, area, imageUrl, rating } = getPropertyDetails();
+  const averageRating = property.reviewsTo?.length
+      ? property.reviewsTo.reduce((sum, review) => sum + review.rating, 0) / property.reviewsTo.length
+      : 0;
 
   return (
-    <Card className="overflow-hidden h-full flex flex-col">
-      <div className="relative h-48 overflow-hidden">
-        {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={title} 
-            className="w-full h-full object-cover transition-transform hover:scale-105"
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+        <div className="relative">
+          <img
+              src={property.photos?.[0]?.imageUrl || "https://via.placeholder.com/400x300"}
+              alt={property.title}
+              className="w-full h-48 object-cover"
           />
-        ) : (
-          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-            <Home className="h-12 w-12 text-gray-400" />
+          <div className="absolute top-2 right-2 flex gap-2">
+            {property.hasWifi && <Wifi className="h-5 w-5 text-white drop-shadow" />}
+            {property.hasParking && <Car className="h-5 w-5 text-white drop-shadow" />}
+            {property.hasPool && <Waves className="h-5 w-5 text-white drop-shadow" />}
           </div>
-        )}
-        <div className="absolute top-3 right-3">
-          <Badge variant="secondary" className="bg-white/90 text-primary font-medium">
-            ${price} / night
-          </Badge>
         </div>
-      </div>
-      
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex justify-between">
-          <span className="line-clamp-1">{title}</span>
-          {rating > 0 && (
-            <span className="flex items-center text-sm font-normal">
-              <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
-              {rating.toFixed(1)}
-            </span>
-          )}
-        </CardTitle>
-        <p className="text-sm text-gray-500">{location}</p>
-      </CardHeader>
-      
-      <CardContent className="py-2 flex-grow">
-        <div className="flex items-center gap-3 mb-2 text-sm text-gray-600">
-          <span>{rooms} Rooms</span>
-          <span>•</span>
-          <span>{area}m²</span>
-        </div>
-        
-        <div className="flex flex-wrap gap-2 my-2">
-          {property.hasWifi && (
-            <Badge variant="outline" className="flex items-center gap-1 font-normal">
-              <Wifi className="h-3 w-3" /> WiFi
-            </Badge>
-          )}
-          {property.hasParking && (
-            <Badge variant="outline" className="flex items-center gap-1 font-normal">
-              <Car className="h-3 w-3" /> Parking
-            </Badge>
-          )}
-          {property.hasPool && (
-            <Badge variant="outline" className="flex items-center gap-1 font-normal">
-              <Waves className="h-3 w-3" /> Pool
-            </Badge>
-          )}
-        </div>
-        
-        <p className="text-sm text-gray-600 line-clamp-2 mt-2">
-          {description}
-        </p>
-      </CardContent>
-      
-      <CardFooter className="pt-2">
-        <Button asChild className="w-full">
-          <Link to={`/properties/${property.id}`}>
-            View Details
+        <CardContent className="p-4">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-lg font-semibold truncate">{property.title}</h3>
+            {averageRating > 0 && (
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                  <span className="text-sm">{averageRating.toFixed(1)}</span>
+                </div>
+            )}
+          </div>
+          <p className="text-sm text-gray-500">{property.city}</p>
+          <p className="text-sm text-gray-600 mt-1">Кімнати: {property.rooms} | Площа: {property.area} м²</p>
+          <p className="text-lg font-bold mt-2">${property.price}/ніч</p>
+        </CardContent>
+        <CardFooter className="p-4 pt-0">
+          <Link href={`/properties/${property.id}`}>
+            <Button className="w-full">Переглянути деталі</Button>
           </Link>
-        </Button>
-      </CardFooter>
-    </Card>
+        </CardFooter>
+      </Card>
   );
 }

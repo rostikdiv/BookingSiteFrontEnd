@@ -1,409 +1,447 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { userAPI, propertyAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { Booking, Review } from "@shared/schema";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Loader2, 
-  User, 
-  Calendar, 
-  Home, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Edit
-} from "lucide-react";
-import { format } from "date-fns";
-import { Link } from "wouter";
+import {CreateHouseData, User} from "@/types/models";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
 
-// Profile update schema
-const profileSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+// Схема валідації для створення будинку
+const houseSchema = z.object({
+  title: z.string().min(3, "Назва має містити щонайменше 3 символи"),
+  description: z.string().min(10, "Опис має містити щонайменше 10 символів"),
+  city: z.string().min(2, "Місто має містити щонайменше 2 символи"),
+  price: z.number().min(1, "Ціна має бути більше 0"),
+  rooms: z.number().min(1, "Кількість кімнат має бути більше 0"),
+  area: z.number().min(10, "Площа має бути більше 10 м²"),
+  hasWifi: z.boolean(),
+  hasParking: z.boolean(),
+  hasPool: z.boolean(),
+  ownerId: z.number(),
 });
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
+type HouseFormValues = z.infer<typeof houseSchema>;
 
 export default function ProfilePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("profile");
 
-  // Form setup
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+  // Стан для редагування профілю
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    email: user?.email || "",
+    phoneNumber: user?.phoneNumber || "",
+  });
+
+  // Форма для створення будинку
+  const houseForm = useForm<HouseFormValues>({
+    resolver: zodResolver(houseSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      email: user?.email || "",
+      price: 0,
+      area: 0,
+      rooms: 0,
+      title: "",
+      description: "",
+      city: "",
+      hasWifi: false,
+      hasParking: false,
+      hasPool: false,
+      ownerId: user?.id || 0,
     },
   });
 
-  // Fetch user bookings
-  const { 
-    data: bookings, 
-    isLoading: isLoadingBookings 
-  } = useQuery<Booking[]>({
-    queryKey: ["/api/bookings"],
-    enabled: activeTab === "bookings",
+  // Завантаження будинків користувача
+  const { data: houses, refetch: refetchHouses } = useQuery({
+    queryKey: ["user-houses", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const allHouses = await propertyAPI.getAll();
+      return allHouses.filter((house) => house.owner.id === user.id);
+    },
+    enabled: !!user,
   });
 
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: ProfileFormValues) => {
-      const res = await apiRequest("PATCH", `/api/user/${user!.id}`, data);
-      return await res.json();
+  // Мутація для оновлення профілю
+  const updateMutation = useMutation({
+    mutationFn: async (data: Partial<User>) => {
+      if (!user) throw new Error("Користувач не авторизований");
+      return await userAPI.update(user.id, data);
     },
-    onSuccess: (updatedUser) => {
-      queryClient.setQueryData(["/api/user"], updatedUser);
+    onSuccess: () => {
       toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
+        title: "Профіль оновлено",
+        description: "Ваші дані успішно оновлені.",
       });
+      setEditMode(false);
     },
-    onError: (error: Error) => {
+    onError: (err: Error) => {
       toast({
-        title: "Update failed",
-        description: error.message,
+        title: "Помилка оновлення",
+        description: err.message,
         variant: "destructive",
       });
     },
   });
 
-  // Handle profile update form submission
-  const onSubmit = (data: ProfileFormValues) => {
-    updateProfileMutation.mutate(data);
+  // Мутація для видалення профілю
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Користувач не авторизований");
+      await userAPI.delete(user.id);
+    },
+    onSuccess: () => {
+      logoutMutation.mutate();
+      toast({
+        title: "Профіль видалено",
+        description: "Ваш профіль успішно видалено.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Помилка видалення",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Мутація для створення будинку
+  const createHouseMutation = useMutation({
+    mutationFn: async (data: CreateHouseData) => {
+      return await propertyAPI.create(data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Помешкання додано",
+        description: "Нове помешкання успішно додано.",
+      });
+      refetchHouses();
+      houseForm.reset();
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Помилка додавання",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Мутація для видалення будинку
+  const deleteHouseMutation = useMutation({
+    mutationFn: async (houseId: number) => {
+      await propertyAPI.delete(houseId);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Помешкання видалено",
+        description: "Помешкання успішно видалено.",
+      });
+      refetchHouses();
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Помилка видалення",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    updateMutation.mutate(formData);
   };
 
-  // Handle logout
-  const handleLogout = () => {
-    logoutMutation.mutate();
+  const handleCreateHouse = (data: HouseFormValues) => {
+    createHouseMutation.mutate(data);
   };
 
-  // Get initials for avatar
-  const getInitials = (user: any) => {
-    if (!user || (!user.firstName && !user.lastName)) {
-      return "U";
-    }
-    
-    const firstName = user.firstName || "";
-    const lastName = user.lastName || "";
-    
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-  };
-
-  // Get status badge color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // Get status icon
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case "pending":
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case "cancelled":
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return null;
-    }
-  };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  if (!user) return <div className="text-center py-10">Завантаження...</div>;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow py-8 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="container mx-auto max-w-5xl">
-          <div className="flex items-center mb-8">
-            <Avatar className="h-16 w-16 mr-4">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {getInitials(user)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{user.firstName} {user.lastName}</h1>
-              <p className="text-gray-600">{user.email}</p>
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="bookings">My Bookings</TabsTrigger>
-              <TabsTrigger value="properties">My Properties</TabsTrigger>
-            </TabsList>
-
-            {/* Profile Tab */}
-            <TabsContent value="profile">
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow container mx-auto p-4">
+          <h1 className="text-3xl font-bold mb-4">Ваш профіль</h1>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Інформація про профіль */}
+            <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
-                  <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>
-                    Update your profile information here
-                  </CardDescription>
+                  <CardTitle>Особисті дані</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="email" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="flex justify-between pt-4">
-                        <Button
-                          type="submit"
-                          disabled={updateProfileMutation.isPending}
-                        >
-                          {updateProfileMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            "Save Changes"
-                          )}
-                        </Button>
-
-                        <Button
-                          variant="destructive"
-                          type="button"
-                          onClick={handleLogout}
-                          disabled={logoutMutation.isPending}
-                        >
-                          {logoutMutation.isPending ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Logging out...
-                            </>
-                          ) : (
-                            "Logout"
-                          )}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-              
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Account Settings</CardTitle>
-                  <CardDescription>
-                    Manage your account settings and preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <User className="h-5 w-5 text-gray-500 mr-2" />
-                        <span>Change Password</span>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Update
-                      </Button>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Home className="h-5 w-5 text-gray-500 mr-2" />
-                        <span>
-                          Host Status: Inactive
-                        </span>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Become a Host
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Bookings Tab */}
-            <TabsContent value="bookings">
-              <Card>
-                <CardHeader>
-                  <CardTitle>My Bookings</CardTitle>
-                  <CardDescription>
-                    View and manage your bookings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingBookings ? (
-                    <div className="py-8 flex justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : !bookings || bookings.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <p className="text-gray-500 mb-4">You don't have any bookings yet</p>
-                      <Button asChild>
-                        <Link href="/properties">Browse Properties</Link>
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {bookings.map((booking) => (
-                        <div key={booking.id} className="border rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center">
-                                <h3 className="font-medium">
-                                  Booking #{booking.id}
-                                </h3>
-                                <span className={`ml-2 px-2 py-1 rounded-full text-xs flex items-center ${getStatusColor(booking.status)}`}>
-                                  {getStatusIcon(booking.status)}
-                                  <span className="ml-1 capitalize">{booking.status}</span>
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                <Calendar className="inline h-4 w-4 mr-1" />
-                                {format(new Date(booking.checkInDate), "MMM d, yyyy")} - {format(new Date(booking.checkOutDate), "MMM d, yyyy")}
-                              </p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                <User className="inline h-4 w-4 mr-1" />
-                                {booking.guests} guest{booking.guests !== 1 ? 's' : ''}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-medium">${booking.totalPrice}</p>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                asChild
-                              >
-                                <Link href={`/properties/${booking.propertyId}`}>
-                                  View Property
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
+                  {editMode ? (
+                      <form onSubmit={handleUpdate} className="space-y-4">
+                        <div>
+                          <Label>Ім’я</Label>
+                          <Input
+                              value={formData.firstName}
+                              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                          />
                         </div>
-                      ))}
-                    </div>
+                        <div>
+                          <Label>Прізвище</Label>
+                          <Input
+                              value={formData.lastName}
+                              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Електронна пошта</Label>
+                          <Input
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Номер телефону</Label>
+                          <Input
+                              value={formData.phoneNumber}
+                              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="submit" disabled={updateMutation.isPending}>
+                            {updateMutation.isPending ? "Оновлення..." : "Зберегти"}
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => setEditMode(false)}>
+                            Скасувати
+                          </Button>
+                        </div>
+                      </form>
+                  ) : (
+                      <div className="space-y-2">
+                        <p>
+                          <strong>Ім’я:</strong> {user.firstName}
+                        </p>
+                        <p>
+                          <strong>Прізвище:</strong> {user.lastName}
+                        </p>
+                        <p>
+                          <strong>Електронна пошта:</strong> {user.email}
+                        </p>
+                        <p>
+                          <strong>Номер телефону:</strong> {user.phoneNumber}
+                        </p>
+                        <Button onClick={() => setEditMode(true)} className="w-full">
+                          Редагувати профіль
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => deleteMutation.mutate()}
+                            disabled={deleteMutation.isPending}
+                            className="w-full"
+                        >
+                          {deleteMutation.isPending ? "Видалення..." : "Видалити профіль"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => logoutMutation.mutate()}
+                            disabled={logoutMutation.isPending}
+                            className="w-full"
+                        >
+                          {logoutMutation.isPending ? "Вихід..." : "Вийти"}
+                        </Button>
+                      </div>
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
+            </div>
 
-            {/* Properties Tab */}
-            <TabsContent value="properties">
-              <Card>
-                <CardHeader>
-                  <CardTitle>My Properties</CardTitle>
-                  <CardDescription>
-                    Manage your listed properties
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="py-8 text-center">
-                    <p className="text-gray-500 mb-4">Property management features coming soon!</p>
-                    <Button>
-                      Add New Property
-                    </Button>
+            {/* Список будинків користувача */}
+            <div className="lg:col-span-2">
+              <h2 className="text-2xl font-semibold mb-4">Ваші помешкання</h2>
+              {houses && houses.length > 0 ? (
+                  <div className="space-y-4">
+                    {houses.map((house) => (
+                        <Card key={house.id}>
+                          <CardHeader>
+                            <CardTitle>{house.title}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p>Місто: {house.city}</p>
+                            <p>Ціна: ${house.price}/ніч</p>
+                            <p>Кімнати: {house.rooms}</p>
+                            <p>Площа: {house.area} м²</p>
+                            <Button
+                                variant="destructive"
+                                onClick={() => deleteHouseMutation.mutate(house.id)}
+                                disabled={deleteHouseMutation.isPending}
+                                className="mt-2"
+                            >
+                              {deleteHouseMutation.isPending ? "Видалення..." : "Видалити"}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
-      <Footer />
-    </div>
+              ) : (
+                  <p className="text-gray-500">У вас поки немає доданих помешкань.</p>
+              )}
+
+              <Separator className="my-6" />
+
+              {/* Форма для додавання нового будинку */}
+              <h2 className="text-2xl font-semibold mb-4">Додати нове помешкання</h2>
+              <Form {...houseForm}>
+                <form onSubmit={houseForm.handleSubmit(handleCreateHouse)} className="space-y-4">
+                  <FormField
+                      control={houseForm.control}
+                      name="title"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Назва</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Назва помешкання" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={houseForm.control}
+                      name="description"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Опис</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Опис помешкання" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={houseForm.control}
+                      name="city"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Місто</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Місто" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={houseForm.control}
+                      name="price"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ціна за ніч ($)</FormLabel>
+                            <FormControl>
+                              <Input
+                                  type="number"
+                                  placeholder="Ціна"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={houseForm.control}
+                      name="rooms"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Кількість кімнат</FormLabel>
+                            <FormControl>
+                              <Input
+                                  type="number"
+                                  placeholder="Кількість кімнат"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={houseForm.control}
+                      name="area"
+                      render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Площа (м²)</FormLabel>
+                            <FormControl>
+                              <Input
+                                  type="number"
+                                  placeholder="Площа"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <div className="space-y-2">
+                    <Label>Зручності</Label>
+                    <FormField
+                        control={houseForm.control}
+                        name="hasWifi"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                              <FormLabel className="cursor-pointer">WiFi</FormLabel>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={houseForm.control}
+                        name="hasParking"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                              <FormLabel className="cursor-pointer">Парковка</FormLabel>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={houseForm.control}
+                        name="hasPool"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center gap-2">
+                              <FormControl>
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                              <FormLabel className="cursor-pointer">Басейн</FormLabel>
+                            </FormItem>
+                        )}
+                    />
+                  </div>
+                  <Button type="submit" disabled={createHouseMutation.isPending}>
+                    {createHouseMutation.isPending ? "Додавання..." : "Додати помешкання"}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
   );
 }

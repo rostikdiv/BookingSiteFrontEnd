@@ -1,94 +1,82 @@
+// pages/properties-page.tsx
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Property } from "@shared/schema";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
+import { propertyAPI } from "@/services/api";
 import PropertyCard from "@/components/property/property-card";
-import PropertyFilters from "@/components/property/property-filters";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {HouseFilterDTO, HouseForRent} from "@/types/models";
 
 export default function PropertiesPage() {
-  const [filters, setFilters] = useState({
-    location: "",
-    checkIn: "",
-    checkOut: "",
-    guests: 1
+  const [filters, setFilters] = useState<HouseFilterDTO>({});
+
+  const { data: properties, isLoading, refetch } = useQuery({
+    queryKey: ["properties", filters],
+    queryFn: () => {
+      if (Object.keys(filters).length > 0) {
+        return propertyAPI.search(filters);
+      }
+      return propertyAPI.getAll();
+    },
   });
 
-  const { data: properties, isLoading, error } = useQuery<Property[]>({
-    queryKey: ["/api/properties"],
-  });
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({
+      ...prev,
+      [name]: value || undefined,
+    }));
+  };
 
-  // Filter properties based on location
-  const filteredProperties = properties?.filter(property => {
-    if (!filters.location) return true;
-    return property.location.toLowerCase().includes(filters.location.toLowerCase());
-  });
-
-  const handleFilterChange = (newFilters: typeof filters) => {
-    setFilters(newFilters);
+  const applyFilters = () => {
+    refetch();
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="container mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Explore Properties</h1>
-          
-          <PropertyFilters onFilterChange={handleFilterChange} />
-          
-          {isLoading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-10">
-              <p className="text-red-500">Error loading properties</p>
-              <Button 
-                onClick={() => window.location.reload()}
-                variant="outline"
-                className="mt-4"
-              >
-                Retry
-              </Button>
-            </div>
-          ) : (
-            <>
-              <p className="text-gray-600 mb-6">
-                {filteredProperties?.length || 0} properties found
-                {filters.location && ` in "${filters.location}"`}
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProperties?.map((property) => (
-                  <PropertyCard key={property.id} property={property} />
-                ))}
-                
-                {(filteredProperties?.length === 0) && (
-                  <div className="col-span-full text-center py-10">
-                    <p className="text-gray-500">No properties found matching your criteria</p>
-                    <Button 
-                      onClick={() => setFilters({
-                        location: "",
-                        checkIn: "",
-                        checkOut: "",
-                        guests: 1
-                      })}
-                      variant="outline"
-                      className="mt-4"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
+      <div className="min-h-screen p-6 bg-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Фільтри</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Input
+                    name="city"
+                    placeholder="Місто"
+                    onChange={handleFilterChange}
+                    value={filters.city || ""}
+                />
+                <Input
+                    name="minPrice"
+                    type="number"
+                    placeholder="Мін. ціна"
+                    onChange={handleFilterChange}
+                    value={filters.minPrice || ""}
+                />
+                <Input
+                    name="maxPrice"
+                    type="number"
+                    placeholder="Макс. ціна"
+                    onChange={handleFilterChange}
+                    value={filters.maxPrice || ""}
+                />
               </div>
-            </>
+              <Button onClick={applyFilters} className="mt-4">Застосувати фільтри</Button>
+            </CardContent>
+          </Card>
+
+          {isLoading ? (
+              <div>Завантаження...</div>
+          ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {properties?.map((property: HouseForRent) => (
+                    <PropertyCard key={property.id} property={property} />
+                ))}
+              </div>
           )}
         </div>
-      </main>
-      <Footer />
-    </div>
+      </div>
   );
 }

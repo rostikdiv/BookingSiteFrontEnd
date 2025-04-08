@@ -1,45 +1,25 @@
-import {createContext, ReactNode, useCallback, useContext, useEffect, useState} from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { User, LoginData } from "@/types/models";
-import { userAPI} from "@/services/api";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
+import { User, LoginData, RegisterData } from "@/types/models";
+import { userAPI } from "@/services/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import axios from "axios";
 
-
-const api = axios.create({
-  baseURL: "http://localhost:8080",
-  withCredentials: true, // Має бути true
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-
-// Схемы валидации для форм
 export const loginSchema = z.object({
-  login: z.string().min(3, "Login must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  login: z.string().min(3, "Логін має містити щонайменше 3 символи"),
+  password: z.string().min(6, "Пароль має містити щонайменше 6 символів"),
 });
 
 export const registerSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  phoneNumber: z.string().min(10, "Phone number must be at least 10 characters"),
-  login: z.string().min(3, "Login must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(2, "Ім’я має містити щонайменше 2 символи"),
+  lastName: z.string().min(2, "Прізвище має містити щонайменше 2 символи"),
+  email: z.string().email("Введіть дійсну адресу електронної пошти"),
+  phoneNumber: z.string().min(10, "Номер телефону має містити щонайменше 10 символів"),
+  login: z.string().min(3, "Логін має містити щонайменше 3 символи"),
+  password: z.string().min(6, "Пароль має містити щонайменше 6 символів"),
 });
 
-// Типы данных для форм
-export type RegisterData = z.infer<typeof registerSchema>;
-
-// Тип данных контекста авторизации
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
@@ -47,42 +27,41 @@ type AuthContextType = {
   loginMutation: UseMutationResult<User, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
-  clearAuthData: () => void; // Нова функція
-  initializeAuth: () => Promise<void>; // Нова функція
+  clearAuthData: () => void;
+  initializeAuth: () => Promise<void>;
 };
 
-// Создаем контекст авторизации
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-// Провайдер авторизации
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [initialized, setInitialized] = useState(false);
   const { toast } = useToast();
+  const [initialized, setInitialized] = useState(false);
 
-  // Получаем данные пользователя
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
+  const { data: user, error, isLoading } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
     queryFn: async () => {
       try {
-        return await userAPI.getCurrentUser();
+        const currentUser = await userAPI.getCurrentUser();
+        if (!currentUser?.id) {
+          throw new Error("User ID is missing in response");
+        }
+        return currentUser;
       } catch (error: any) {
-        console.error('Error fetching user data:', error);
-        // Если 401 Unauthorized, это нормально для неаутентифицированных пользователей
-        if (error.message.includes('Unauthorized') || error?.response?.status === 401) {
+        if (
+            error.message.includes("Користувач не авторизований") ||
+            error?.response?.status === 401 ||
+            error?.response?.status === 403
+        ) {
+          userAPI.logout();
           return null;
         }
         throw error;
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000, // 5 минут
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Мутация для входа в систему
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       return await userAPI.login(credentials);
@@ -90,20 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
-        title: "Welcome back!",
-        description: `Logged in as ${user.firstName}`,
+        title: "Ласкаво просимо!",
+        description: `Ви увійшли як ${user.firstName}`,
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Login failed",
+        title: "Помилка входу",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Мутация для регистрации
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
       return await userAPI.register(data);
@@ -111,53 +89,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
       toast({
-        title: "Account created",
-        description: "Your account has been created successfully!",
+        title: "Обліковий запис створено",
+        description: "Ваш обліковий запис успішно створено!",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Registration failed",
+        title: "Помилка реєстрації",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Мутация для выхода из системы
-  // use-auth.tsx
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post('/user/logout');
-      return response.data;
+      await userAPI.logout();
     },
     onSuccess: () => {
       queryClient.clear();
-      localStorage.clear();
-      window.location.href = '/auth';
+      window.location.href = "/auth";
     },
     onError: (error) => {
-      console.error('Logout error:', error);
-      // Насильно очищаємо дані навіть при помилці
-      localStorage.clear();
-      window.location.href = '/auth';
-    }
+      console.error("Помилка виходу:", error);
+      window.location.href = "/auth";
+    },
   });
 
   const clearAuthData = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     queryClient.setQueryData(["/api/user"], null);
   }, []);
 
   const initializeAuth = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        clearAuthData();
-        return;
-      }
-
       const user = await userAPI.getCurrentUser();
       queryClient.setQueryData(["/api/user"], user);
     } catch (error) {
@@ -167,14 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearAuthData]);
 
-  // Оновлений ефект ініціалізації
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
-  // Блокуємо рендер додатку до завершення ініціалізації
   if (!initialized) {
-    return <div>Loading...</div>;
+    return <div>Завантаження...</div>;
   }
 
   return (
@@ -195,11 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Хук для использования контекста авторизации
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth має використовуватися в межах AuthProvider");
   }
   return context;
 }
