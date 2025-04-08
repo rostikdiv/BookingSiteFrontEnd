@@ -29,10 +29,10 @@ export default function Header() {
     if (!user || (!user.firstName && !user.lastName)) {
       return "U";
     }
-    
+
     const firstName = user.firstName || "";
     const lastName = user.lastName || "";
-    
+
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
@@ -44,162 +44,176 @@ export default function Header() {
   ];
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                <Hotel className="h-6 w-6 text-primary mr-2" />
-                <span className="font-poppins font-semibold text-xl text-primary">StayEase</span>
-              </Link>
+      <header className="bg-white shadow-md sticky top-0 z-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Link href="/" className="flex items-center">
+                  <Hotel className="h-6 w-6 text-primary mr-2" />
+                  <span className="font-poppins font-semibold text-xl text-primary">StayEase</span>
+                </Link>
+              </div>
+              <nav className="hidden md:ml-10 md:flex space-x-8">
+                {navigationLinks.map((link) => (
+                    <Link
+                        key={link.path}
+                        href={link.path}
+                        className={`${
+                            location === link.path ? "text-primary" : "text-muted-foreground"
+                        } hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200`}
+                    >
+                      {link.title}
+                    </Link>
+                ))}
+              </nav>
             </div>
-            <nav className="hidden md:ml-10 md:flex space-x-8">
-              {navigationLinks.map((link) => (
+            <div className="hidden md:flex items-center space-x-3">
+              {user ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary text-primary-foreground">
+                            {getInitials(user)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <div className="px-2 py-1.5 text-sm font-medium">
+                        {user.firstName} {user.lastName}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Link href="/profile" className="w-full">
+                          <Button variant="ghost" className="w-full justify-start">My Profile</Button>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/bookings" className="w-full">
+                          <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/my-properties" className="w-full">
+                          <Button variant="ghost" className="w-full justify-start">My Properties</Button>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Link href="/add-house" className="w-full">
+                          <Button variant="ghost" className="w-full justify-start">Add Property</Button>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+              ) : (
+                  <>
+                    <Button variant="outline" asChild>
+                      <Link href="/auth">Sign In</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link href="/auth?tab=register">Sign Up</Link>
+                    </Button>
+                  </>
+              )}
+            </div>
+            <div className="flex md:hidden">
+              <button
+                  type="button"
+                  className="text-muted-foreground hover:text-primary"
+                  onClick={toggleMenu}
+                  aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
+          </div>
+        </div>
+        {/* Mobile menu */}
+        <div className={`${isMenuOpen ? "block" : "hidden"} md:hidden`}>
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            {navigationLinks.map((link) => (
                 <Link
-                  key={link.path}
-                  href={link.path}
-                  className={`${
-                    location === link.path ? "text-primary" : "text-muted-foreground"
-                  } hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200`}
+                    key={link.path}
+                    href={link.path}
+                    className={`${
+                        location === link.path ? "text-primary" : "text-muted-foreground"
+                    } block px-3 py-2 rounded-md text-base font-medium`}
+                    onClick={() => setIsMenuOpen(false)}
                 >
                   {link.title}
                 </Link>
-              ))}
-            </nav>
+            ))}
           </div>
-          <div className="hidden md:flex items-center space-x-3">
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {getInitials(user)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <div className="px-2 py-1.5 text-sm font-medium">
-                    {user.firstName} {user.lastName}
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile">My Profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/bookings">My Bookings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/my-properties">My Properties</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <>
-                <Button variant="outline" asChild>
-                  <Link href="/auth">Sign In</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/auth?tab=register">Sign Up</Link>
-                </Button>
-              </>
-            )}
-          </div>
-          <div className="flex md:hidden">
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-primary"
-              onClick={toggleMenu}
-              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Mobile menu */}
-      <div className={`${isMenuOpen ? "block" : "hidden"} md:hidden`}>
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          {navigationLinks.map((link) => (
-            <Link
-              key={link.path}
-              href={link.path}
-              className={`${
-                location === link.path ? "text-primary" : "text-muted-foreground"
-              } block px-3 py-2 rounded-md text-base font-medium`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {link.title}
-            </Link>
-          ))}
-        </div>
-        <div className="pt-4 pb-3 border-t border-border">
-          <div className="flex items-center px-5">
-            {user ? (
-              <div className="space-y-2 w-full">
-                <div className="flex items-center">
-                  <Avatar className="h-8 w-8 mr-3">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {getInitials(user)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="text-base font-medium text-foreground">
-                      {user.firstName} {user.lastName}
+          <div className="pt-4 pb-3 border-t border-border">
+            <div className="flex items-center px-5">
+              {user ? (
+                  <div className="space-y-2 w-full">
+                    <div className="flex items-center">
+                      <Avatar className="h-8 w-8 mr-3">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {getInitials(user)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="text-base font-medium text-foreground">
+                          {user.firstName} {user.lastName}
+                        </div>
+                        <div className="text-sm font-medium text-muted-foreground">{user.email}</div>
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-muted-foreground">{user.email}</div>
+                    <div className="space-y-1">
+                      <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">My Profile</Button>
+                      </Link>
+                      <Link href="/bookings" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
+                      </Link>
+                      <Link href="/my-properties" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">My Properties</Button>
+                      </Link>
+                      <Link href="/add-house" onClick={() => setIsMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">Add Property</Button>
+                      </Link>
+                      <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                      >
+                        Logout
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">My Profile</Button>
-                  </Link>
-                  <Link href="/bookings" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
-                  </Link>
-                  <Link href="/my-properties" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">My Properties</Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    Logout
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  asChild
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Link href="/auth">Sign In</Link>
-                </Button>
-                <Button
-                  className="w-full"
-                  asChild
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Link href="/auth?tab=register">Sign Up</Link>
-                </Button>
-              </div>
-            )}
+              ) : (
+                  <div className="w-full space-y-2">
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        asChild
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Link href="/auth">Sign In</Link>
+                    </Button>
+                    <Button
+                        className="w-full"
+                        asChild
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Link href="/auth?tab=register">Sign Up</Link>
+                    </Button>
+                  </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
   );
 }

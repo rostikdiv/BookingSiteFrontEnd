@@ -10,12 +10,14 @@ import PropertyPageApi from "@/pages/property-page-api";
 import PropertiesPageApi from "@/pages/properties-page-api";
 import ProfilePage from "@/pages/profile-page";
 import NotFound from "@/pages/not-found";
+import AddHousePage from "@/pages/AddHousePage";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
+        <Route path="/add-house" component={AddHousePage} /> {/* Додаємо новий маршрут */}
       <Route path="/properties" component={PropertiesPageApi} />
       <Route path="/properties/:id" component={PropertyPageApi} />
       <ProtectedRoute path="/profile" component={ProfilePage} />

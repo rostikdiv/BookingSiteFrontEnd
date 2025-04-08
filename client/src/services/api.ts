@@ -101,11 +101,14 @@ export const propertyAPI = {
     return response.data;
   },
 
-  create: async (data: CreateHouseData): Promise<HouseForRent> => {
-    const response = await api.post("/ForRent", data);
+  create: async (data: CreateHouseData, userId: number) => {
+    console.log("Adapted House Data for POST /toUser:", data);
+    const response = await api.post<User>(
+        `/ForRent/toUser/${userId}`,
+        data
+    );
     return response.data;
   },
-
   update: async (id: number, data: Partial<HouseForRent>): Promise<HouseForRent> => {
     const response = await api.put(`/ForRent/edit/${id}`, data);
     return response.data;

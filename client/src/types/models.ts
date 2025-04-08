@@ -99,14 +99,12 @@ export interface CreateBookingData {
 
 // Модель для створення будинку
 export interface CreateHouseData {
-  price: number;
-  area: number;
-  rooms: number;
   title: string;
   description: string;
   city: string;
+  rooms: number;
+  area: number;
+  price: number;
   hasWifi: boolean;
   hasParking: boolean;
-  hasPool: boolean;
-  ownerId: number;
-}
+  hasPool: boolean;}
