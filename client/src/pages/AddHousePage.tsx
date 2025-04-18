@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
-import { propertyAPI } from "@/services/api";
-import { CreateHouseData, User } from "@/types/models";
+import { propertyAPI } from "@/services/api"; // Змінено з houseAPI на propertyApi
+import { CreateHouseData, User, HouseForRent } from "@/types/models";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
@@ -17,7 +17,7 @@ export default function AddHousePage() {
     const { user } = useAuth();
     const { toast } = useToast();
 
-    // Стан для форми
+    // Стан для форми створення помешкання
     const [title, setTitle] = useState<string>("");
     const [description, setDescription] = useState<string>("");
     const [city, setCity] = useState<string>("");
@@ -28,8 +28,34 @@ export default function AddHousePage() {
     const [hasParking, setHasParking] = useState<boolean>(false);
     const [hasPool, setHasPool] = useState<boolean>(false);
 
+    // Стан для фотографій
+    const [imageUrl, setImageUrl] = useState<string>("");
+    const [createdHouse, setCreatedHouse] = useState<HouseForRent | null>(null);
+
+    // Функція для скидання стану
+    const resetForm = () => {
+        setCreatedHouse(null);
+        setTitle("");
+        setDescription("");
+        setCity("");
+        setRooms(1);
+        setArea(0);
+        setPrice(0);
+        setHasWifi(false);
+        setHasParking(false);
+        setHasPool(false);
+        setImageUrl("");
+    };
+
+    // Логування для перевірки оновлення createdHouse
+    useEffect(() => {
+        if (createdHouse) {
+            console.log("Updated createdHouse:", createdHouse);
+        }
+    }, [createdHouse]);
+
     // Мутація для створення помешкання
-    const houseMutation = useMutation({
+    const propertyMutation = useMutation<HouseForRent, Error, CreateHouseData>({
         mutationFn: async (data: CreateHouseData) => {
             if (!user || !user.id) {
                 throw new Error("User is not authenticated or user ID is missing");
@@ -45,23 +71,15 @@ export default function AddHousePage() {
                 hasParking: data.hasParking,
                 hasPool: data.hasPool,
             };
-            return await propertyAPI.create(houseData, user.id); // Передаємо userId як окремий параметр
+            return await propertyAPI.create(houseData, user.id);
         },
-        onSuccess: (user: User) => {
+        onSuccess: (house: HouseForRent) => {
+            console.log("Created House:", house);
             toast({
                 title: "Помешкання додано!",
-                description: "Ваше помешкання успішно додано.",
+                description: "Ваше помешкання успішно додано. Тепер ви можете додати фотографії.",
             });
-            // Очищаємо форму
-            setTitle("");
-            setDescription("");
-            setCity("");
-            setRooms(1);
-            setArea(0);
-            setPrice(0);
-            setHasWifi(false);
-            setHasParking(false);
-            setHasPool(false);
+            setCreatedHouse(house);
         },
         onError: (err: Error) => {
             toast({
@@ -70,6 +88,33 @@ export default function AddHousePage() {
                 variant: "destructive",
             });
         },
+    });
+
+    // Мутація для додавання фотографії
+    const photoMutation = useMutation<HouseForRent, Error, string>({
+        mutationFn: async (imageUrl: string) => {
+            if (!createdHouse || !createdHouse.id) {
+                throw new Error("House ID is missing");
+            }
+            console.log("Adding photo to house with ID:", createdHouse.id);
+            return await propertyAPI.addPhoto(createdHouse.id, imageUrl);
+        },
+        onSuccess: (house: HouseForRent) => {
+            toast({
+                title: "Фотографію додано!",
+                description: "Фотографія успішно додана до помешкання.",
+            });
+            setCreatedHouse(house);
+            setImageUrl("");
+        },
+        onError: (err: Error) => {
+            toast({
+                title: "Помилка додавання фотографії",
+                description: err.message || "Виникла помилка під час додавання фотографії.",
+                variant: "destructive",
+            });
+        },
+        retry: 0,
     });
 
     const handleSubmit = () => {
@@ -96,7 +141,29 @@ export default function AddHousePage() {
 
         console.log("House Data before sending:", houseData);
 
-        houseMutation.mutate(houseData);
+        propertyMutation.mutate(houseData);
+    };
+
+    const handleAddPhoto = () => {
+        if (!imageUrl) {
+            toast({
+                title: "Помилка",
+                description: "Введіть URL фотографії.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        if (photoMutation.isPending) {
+            toast({
+                title: "Зачекайте",
+                description: "Фотографія вже додається.",
+                variant: "default",
+            });
+            return;
+        }
+
+        photoMutation.mutate(imageUrl);
     };
 
     if (!user) {
@@ -127,6 +194,7 @@ export default function AddHousePage() {
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     placeholder="Назва помешкання"
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div>
@@ -135,6 +203,7 @@ export default function AddHousePage() {
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Опис помешкання"
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div>
@@ -143,6 +212,7 @@ export default function AddHousePage() {
                                     value={city}
                                     onChange={(e) => setCity(e.target.value)}
                                     placeholder="Місто"
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div>
@@ -152,6 +222,7 @@ export default function AddHousePage() {
                                     min={1}
                                     value={rooms}
                                     onChange={(e) => setRooms(Number(e.target.value))}
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div>
@@ -161,6 +232,7 @@ export default function AddHousePage() {
                                     min={0}
                                     value={area}
                                     onChange={(e) => setArea(Number(e.target.value))}
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div>
@@ -170,12 +242,14 @@ export default function AddHousePage() {
                                     min={0}
                                     value={price}
                                     onChange={(e) => setPrice(Number(e.target.value))}
+                                    disabled={!!createdHouse}
                                 />
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
                                     checked={hasWifi}
                                     onCheckedChange={(checked) => setHasWifi(checked as boolean)}
+                                    disabled={!!createdHouse}
                                 />
                                 <Label>WiFi</Label>
                             </div>
@@ -183,6 +257,7 @@ export default function AddHousePage() {
                                 <Checkbox
                                     checked={hasParking}
                                     onCheckedChange={(checked) => setHasParking(checked as boolean)}
+                                    disabled={!!createdHouse}
                                 />
                                 <Label>Парковка</Label>
                             </div>
@@ -190,16 +265,79 @@ export default function AddHousePage() {
                                 <Checkbox
                                     checked={hasPool}
                                     onCheckedChange={(checked) => setHasPool(checked as boolean)}
+                                    disabled={!!createdHouse}
                                 />
                                 <Label>Басейн</Label>
                             </div>
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={houseMutation.isPending || !title || !description || !city || rooms < 1 || area <= 0 || price <= 0}
-                            >
-                                {houseMutation.isPending ? "Додавання..." : "Додати помешкання"}
-                            </Button>
+                            {!createdHouse && (
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={propertyMutation.isPending || !title || !description || !city || rooms < 1 || area <= 0 || price <= 0}
+                                >
+                                    {propertyMutation.isPending ? "Додавання..." : "Додати помешкання"}
+                                </Button>
+                            )}
                         </div>
+
+                        {/* Секція для додавання фотографій */}
+                        {createdHouse && (
+                            <div className="mt-6 space-y-4">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Додати фотографії до помешкання</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label>URL фотографії</Label>
+                                                <Input
+                                                    value={imageUrl}
+                                                    onChange={(e) => setImageUrl(e.target.value)}
+                                                    placeholder="Введіть URL фотографії"
+                                                />
+                                            </div>
+                                            <Button
+                                                onClick={handleAddPhoto}
+                                                disabled={photoMutation.isPending || !imageUrl}
+                                            >
+                                                {photoMutation.isPending ? "Додавання..." : "Додати фотографію"}
+                                            </Button>
+
+                                            {/* Відображення доданих фотографій */}
+                                            {createdHouse.photos && createdHouse.photos.length > 0 && (
+                                                <div className="mt-4">
+                                                    <h3 className="text-lg font-medium">Додані фотографії:</h3>
+                                                    <ul className="mt-2 space-y-2">
+                                                        {createdHouse.photos.map((photo) => (
+                                                            <li key={photo.id} className="flex items-center space-x-2">
+                                                                <img
+                                                                    src={photo.imageUrl}
+                                                                    alt="House photo"
+                                                                    className="w-16 h-16 object-cover rounded"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.src = "https://placehold.co/150x150";
+                                                                    }}
+                                                                />
+                                                                <span>{photo.imageUrl}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {/* Кнопка для створення нового оголошення */}
+                                            <Button
+                                                onClick={resetForm}
+                                                variant="outline"
+                                                className="mt-4"
+                                            >
+                                                Створити нове оголошення
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </main>

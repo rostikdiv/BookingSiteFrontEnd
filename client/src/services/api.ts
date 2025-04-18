@@ -100,10 +100,14 @@ export const propertyAPI = {
     const response = await api.get(`/ForRent/getById/${id}`);
     return response.data;
   },
+  getByOwnerId: async (ownerId: number): Promise<HouseForRent[]> => {
+    const response = await api.get(`/ForRent/getById/all/${ownerId}`);
+    return response.data;
+  },
 
   create: async (data: CreateHouseData, userId: number) => {
     console.log("Adapted House Data for POST /toUser:", data);
-    const response = await api.post<User>(
+    const response = await api.post<HouseForRent>(
         `/ForRent/toUser/${userId}`,
         data
     );
@@ -120,6 +124,15 @@ export const propertyAPI = {
 
   search: async (filters: HouseFilterDTO): Promise<HouseForRent[]> => {
     const response = await api.post("/ForRent/search", filters);
+    return response.data;
+  },
+  addPhoto: async (houseId: number, imageUrl: string) => {
+    const photoData = { imageUrl }; // Формуємо об’єкт Photo
+    console.log("Photo Data for POST /toPhoto:", photoData);
+    const response = await api.post<HouseForRent>(
+        `/api/photos/toPhoto/${houseId}`,
+        photoData
+    );
     return response.data;
   },
 };
@@ -148,6 +161,7 @@ export const reviewAPI = {
     const response = await api.get<Review[]>(`/review/byHouse/${houseId}`);
     return response.data;
   },
+
   create: async (data: CreateReviewData) => {
     const { houseForRentId, ...reviewData } = data; // Витягуємо houseForRentId
     const adaptedData = {
@@ -172,6 +186,16 @@ export const bookingAPI = {
 
   getById: async (id: number): Promise<BookingOffer> => {
     const response = await api.get(`/bookOffer/getById/${id}`);
+    return response.data;
+  },
+  // Додаємо методи для BookingOffer
+  getBookingOffersByUserId: async (userId: number): Promise<BookingOffer[]> => {
+    const response = await api.get(`/bookOffer/getAlBbyUserId/${userId}`);
+    return response.data;
+  },
+
+  getBookingOffersForOwnerHouses: async (ownerId: number): Promise<BookingOffer[]> => {
+    const response = await api.get(`/bookOffer/owner/${ownerId}`);
     return response.data;
   },
 

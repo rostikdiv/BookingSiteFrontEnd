@@ -1,3 +1,5 @@
+
+
 // Модель користувача
 export interface User {
   id: number;
@@ -39,9 +41,9 @@ export interface Review {
 }
 // Модель фотографії
 export interface Photo {
-  id: number;
+  id?: number;
   imageUrl: string;
-  house: HouseForRent;
+  house?: HouseForRent;
 }
 
 // Модель пропозиції бронювання
