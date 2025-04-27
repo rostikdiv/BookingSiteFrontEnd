@@ -1,6 +1,3 @@
-
-
-// Модель користувача
 export interface User {
   id: number;
   firstName: string;
@@ -12,7 +9,11 @@ export interface User {
   housesForRentList?: HouseForRent[];
 }
 
-// Модель будинку для оренди
+export interface LoginResponse {
+  user: User;
+  token: string;
+}
+
 export interface HouseForRent {
   id: number;
   price: number;
@@ -30,23 +31,34 @@ export interface HouseForRent {
   bookingOffers?: BookingOffer[];
 }
 
-// Модель відгуку
 export interface Review {
   id: number;
-  authorId: number; // Залишаємо числовий ID
+  authorLogin: string;
+  comment: string;
+  rating: number;
+  createdAt: string;
+  houseForRentId: number;
+}
+
+export interface CreateReviewData {
+  authorId: number;
   comment: string;
   rating: number;
   houseForRentId: number;
-  createdAt: string;
 }
-// Модель фотографії
+
+export interface CreateReviewPayload {
+  authorId: number;
+  comment: string;
+  rating: number;
+}
+
 export interface Photo {
   id?: number;
   imageUrl: string;
   house?: HouseForRent;
 }
 
-// Модель пропозиції бронювання
 export interface BookingOffer {
   id: number;
   lessorId: number;
@@ -55,7 +67,22 @@ export interface BookingOffer {
   houseOffer: HouseForRent;
 }
 
-// Модель для фільтрації будинків
+export interface MyBookingOfferDTO {
+  id: number;
+  houseTitle: string;
+  offerFrom: string;
+  offerTo: string;
+}
+
+export interface ReceivedBookingOfferDTO {
+  id: number;
+  authorLogin: string;
+  authorPhoneNumber: string;
+  houseTitle: string;
+  offerFrom: string;
+  offerTo: string;
+}
+
 export interface HouseFilterDTO {
   city?: string;
   minPrice?: number;
@@ -68,7 +95,6 @@ export interface HouseFilterDTO {
   keyword?: string;
 }
 
-// Модель для даних при реєстрації
 export interface RegisterData {
   firstName: string;
   lastName: string;
@@ -78,20 +104,11 @@ export interface RegisterData {
   password: string;
 }
 
-// Модель для даних при вході
 export interface LoginData {
   login: string;
   password: string;
 }
 
-// Модель для створення відгуку
-export interface CreateReviewData {
-  authorId: number; // Повертаємо authorId
-  comment: string;
-  rating: number;
-  houseForRentId: number;
-}
-// Модель для створення бронювання
 export interface CreateBookingData {
   lessorId: number;
   offerFrom: string;
@@ -99,7 +116,6 @@ export interface CreateBookingData {
   houseOfferId: number;
 }
 
-// Модель для створення будинку
 export interface CreateHouseData {
   title: string;
   description: string;
@@ -109,4 +125,5 @@ export interface CreateHouseData {
   price: number;
   hasWifi: boolean;
   hasParking: boolean;
-  hasPool: boolean;}
+  hasPool: boolean;
+}

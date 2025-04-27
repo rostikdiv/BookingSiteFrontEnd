@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { userAPI, propertyAPI, bookingAPI } from "@/services/api";
@@ -9,15 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, HouseForRent, BookingOffer, Photo } from "@/types/models";
+import { User, HouseForRent, MyBookingOfferDTO, ReceivedBookingOfferDTO, Photo } from "@/types/models";
 import PropertyCard from "@/components/property/property-card";
 import Modal from "react-modal";
+import { format } from "date-fns";
 
 // Прив’язка модального вікна до кореня програми
 Modal.setAppElement("#root");
 
 export default function ProfilePage() {
-    const { user, logoutMutation } = useAuth();
+    const { user, logoutMutation, isLoading: authLoading } = useAuth();
     const { toast } = useToast();
 
     // Стан для редагування профілю
@@ -38,48 +39,75 @@ export default function ProfilePage() {
     const [editHouseData, setEditHouseData] = useState<Partial<HouseForRent>>({});
     const [newPhotoUrl, setNewPhotoUrl] = useState<string>("");
 
+    // Оновлення formData при зміні user
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
+                email: user.email || "",
+                phoneNumber: user.phoneNumber || "",
+            });
+        }
+    }, [user]);
+
+    // Логування user для дебагу
+    useEffect(() => {
+        console.log("User before queries:", user);
+    }, [user]);
+
     // Завантаження будинків користувача
     const { data: houses, refetch: refetchHouses } = useQuery({
         queryKey: ["user-houses", user?.id],
         queryFn: async () => {
-            if (!user) return [];
+            if (!user || !user.id) {
+                console.warn("User or user.id is undefined, returning empty array");
+                return [];
+            }
             return await propertyAPI.getByOwnerId(user.id);
         },
-        enabled: !!user,
+        enabled: !!user && !!user.id, // Запит виконується лише якщо user і user.id існують
     });
 
     // Завантаження пропозицій оренди, створених користувачем
     const { data: myBookingOffers, refetch: refetchMyBookingOffers } = useQuery({
         queryKey: ["my-booking-offers", user?.id],
         queryFn: async () => {
-            if (!user) return [];
+            if (!user || !user.id) {
+                console.warn("User or user.id is undefined, returning empty array");
+                return [];
+            }
             return await bookingAPI.getBookingOffersByUserId(user.id);
         },
-        enabled: !!user,
+        enabled: !!user && !!user.id,
     });
 
     // Завантаження отриманих пропозицій оренди
     const { data: receivedBookingOffers, refetch: refetchReceivedBookingOffers } = useQuery({
         queryKey: ["received-booking-offers", user?.id],
         queryFn: async () => {
-            if (!user) return [];
+            if (!user || !user.id) {
+                console.warn("User or user.id is undefined, returning empty array");
+                return [];
+            }
             return await bookingAPI.getBookingOffersForOwnerHouses(user.id);
         },
-        enabled: !!user,
+        enabled: !!user && !!user.id,
     });
 
     // Мутація для оновлення профілю
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<User>) => {
-            if (!user) throw new Error("Користувач не авторизований");
+            if (!user || !user.id) throw new Error("Користувач не авторизований");
             return await userAPI.update(user.id, data);
         },
-        onSuccess: () => {
+        onSuccess: (updatedUser) => {
             toast({
                 title: "Профіль оновлено",
                 description: "Ваші дані успішно оновлені.",
             });
             setEditMode(false);
+            localStorage.setItem("user", JSON.stringify(updatedUser));
         },
         onError: (err: Error) => {
             toast({
@@ -93,7 +121,7 @@ export default function ProfilePage() {
     // Мутація для видалення профілю
     const deleteMutation = useMutation({
         mutationFn: async () => {
-            if (!user) throw new Error("Користувач не авторизований");
+            if (!user || !user.id) throw new Error("Користувач не авторизований");
             await userAPI.delete(user.id);
         },
         onSuccess: () => {
@@ -152,6 +180,27 @@ export default function ProfilePage() {
         onError: (err: Error) => {
             toast({
                 title: "Помилка оновлення",
+                description: err.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Мутація для видалення пропозиції оренди
+    const deleteBookingOfferMutation = useMutation({
+        mutationFn: async (offerId: number) => {
+            await bookingAPI.delete(offerId);
+        },
+        onSuccess: () => {
+            toast({
+                title: "Пропозиція скасована",
+                description: "Пропозиція оренди успішно видалена.",
+            });
+            refetchMyBookingOffers();
+        },
+        onError: (err: Error) => {
+            toast({
+                title: "Помилка скасування",
                 description: err.message,
                 variant: "destructive",
             });
@@ -217,7 +266,13 @@ export default function ProfilePage() {
         }));
     };
 
-    if (!user) return <div className="text-center py-10">Завантаження...</div>;
+    if (authLoading) {
+        return <div className="text-center py-10">Завантаження...</div>;
+    }
+
+    if (!user) {
+        return <div className="text-center py-10">Ви не авторизовані. Будь ласка, увійдіть.</div>;
+    }
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-100">
@@ -275,16 +330,16 @@ export default function ProfilePage() {
                                 ) : (
                                     <div className="space-y-2">
                                         <p>
-                                            <strong>Ім’я:</strong> {user.firstName}
+                                            <strong>Ім’я:</strong> {user.firstName || "Не вказано"}
                                         </p>
                                         <p>
-                                            <strong>Прізвище:</strong> {user.lastName}
+                                            <strong>Прізвище:</strong> {user.lastName || "Не вказано"}
                                         </p>
                                         <p>
-                                            <strong>Електронна пошта:</strong> {user.email}
+                                            <strong>Електронна пошта:</strong> {user.email || "Не вказано"}
                                         </p>
                                         <p>
-                                            <strong>Номер телефону:</strong> {user.phoneNumber}
+                                            <strong>Номер телефону:</strong> {user.phoneNumber || "Не вказано"}
                                         </p>
                                         <Button onClick={() => setEditMode(true)} className="w-full">
                                             Редагувати профіль
@@ -363,15 +418,23 @@ export default function ProfilePage() {
                                 <h2 className="text-2xl font-semibold mb-4">Мої пропозиції оренди</h2>
                                 {myBookingOffers && myBookingOffers.length > 0 ? (
                                     <div className="space-y-4">
-                                        {myBookingOffers.map((offer: BookingOffer) => (
+                                        {myBookingOffers.map((offer: MyBookingOfferDTO) => (
                                             <Card key={offer.id}>
                                                 <CardHeader>
                                                     <CardTitle>Пропозиція оренди #{offer.id}</CardTitle>
                                                 </CardHeader>
                                                 <CardContent>
-                                                    <p>Помешкання: {offer.houseOffer?.title || "Невідомо"}</p>
-                                                    <p>Початок: {offer.offerFrom}</p>
-                                                    <p>Кінець: {offer.offerTo}</p>
+                                                    <p><strong>Помешкання:</strong> {offer.houseTitle}</p>
+                                                    <p><strong>Початок:</strong> {format(new Date(offer.offerFrom), "PPP")}</p>
+                                                    <p><strong>Кінець:</strong> {format(new Date(offer.offerTo), "PPP")}</p>
+                                                    <Button
+                                                        variant="destructive"
+                                                        className="mt-4"
+                                                        onClick={() => deleteBookingOfferMutation.mutate(offer.id)}
+                                                        disabled={deleteBookingOfferMutation.isPending}
+                                                    >
+                                                        {deleteBookingOfferMutation.isPending ? "Скасування..." : "Скасувати пропозицію"}
+                                                    </Button>
                                                 </CardContent>
                                             </Card>
                                         ))}
@@ -388,16 +451,17 @@ export default function ProfilePage() {
                                 <h2 className="text-2xl font-semibold mb-4">Отримані пропозиції оренди</h2>
                                 {receivedBookingOffers && receivedBookingOffers.length > 0 ? (
                                     <div className="space-y-4">
-                                        {receivedBookingOffers.map((offer: BookingOffer) => (
+                                        {receivedBookingOffers.map((offer: ReceivedBookingOfferDTO) => (
                                             <Card key={offer.id}>
                                                 <CardHeader>
                                                     <CardTitle>Пропозиція оренди #{offer.id}</CardTitle>
                                                 </CardHeader>
                                                 <CardContent>
-                                                    <p>Помешкання: {offer.houseOffer?.title || "Невідомо"}</p>
-                                                    <p>Від користувача (ID): {offer.lessorId}</p>
-                                                    <p>Початок: {offer.offerFrom}</p>
-                                                    <p>Кінець: {offer.offerTo}</p>
+                                                    <p><strong>Від користувача:</strong> {offer.authorLogin}</p>
+                                                    <p><strong>Телефон:</strong> {offer.authorPhoneNumber}</p>
+                                                    <p><strong>Помешкання:</strong> {offer.houseTitle}</p>
+                                                    <p><strong>Початок:</strong> {format(new Date(offer.offerFrom), "PPP")}</p>
+                                                    <p><strong>Кінець:</strong> {format(new Date(offer.offerTo), "PPP")}</p>
                                                 </CardContent>
                                             </Card>
                                         ))}

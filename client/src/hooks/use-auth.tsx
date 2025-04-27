@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
-import { User, LoginData, RegisterData } from "@/types/models";
-import { userAPI } from "@/services/api";
+import { User, LoginData, RegisterData, LoginResponse } from "@/types/models";
+import { setCurrentUserId, userAPI } from "@/services/api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -24,7 +24,7 @@ type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
+  loginMutation: UseMutationResult<LoginResponse, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<User, Error, RegisterData>;
   clearAuthData: () => void;
@@ -42,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       try {
         const currentUser = await userAPI.getCurrentUser();
+        console.log("useQuery getCurrentUser:", currentUser); // Логування
         if (!currentUser?.id) {
           throw new Error("User ID is missing in response");
         }
         return currentUser;
       } catch (error: any) {
+        console.error("useQuery error:", error); // Логування
         if (
             error.message.includes("Користувач не авторизований") ||
             error?.response?.status === 401 ||
@@ -59,21 +61,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 15 * 60 * 1000, // 15 хвилин
+    enabled: initialized,
   });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       return await userAPI.login(credentials);
     },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (data: LoginResponse) => {
+      console.log("Login success:", data); // Логування
+      queryClient.setQueryData(["/api/user"], data.user);
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       toast({
         title: "Ласкаво просимо!",
-        description: `Ви увійшли як ${user.firstName}`,
+        description: `Ви увійшли як ${data.user.firstName || data.user.login || "Користувач"}`,
       });
     },
     onError: (error: Error) => {
+      console.error("Login error:", error); // Логування
       toast({
         title: "Помилка входу",
         description: error.message,
@@ -87,13 +94,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await userAPI.register(data);
     },
     onSuccess: (user: User) => {
+      console.log("Register success:", user); // Логування
       queryClient.setQueryData(["/api/user"], user);
+      const token = `generated-jwt-token-${user.id}`;
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("user", JSON.stringify(user));
       toast({
         title: "Обліковий запис створено",
         description: "Ваш обліковий запис успішно створено!",
       });
     },
     onError: (error: Error) => {
+      console.error("Register error:", error); // Логування
       toast({
         title: "Помилка реєстрації",
         description: error.message,
@@ -107,28 +119,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await userAPI.logout();
     },
     onSuccess: () => {
-      queryClient.clear();
+      console.log("Logout success"); // Логування
+      queryClient.setQueryData(["/api/user"], null);
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
       window.location.href = "/auth";
     },
     onError: (error) => {
-      console.error("Помилка виходу:", error);
+      console.error("Logout error:", error); // Логування
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
       window.location.href = "/auth";
     },
   });
 
   const clearAuthData = useCallback(() => {
+    console.log("Clearing auth data"); // Логування
     queryClient.setQueryData(["/api/user"], null);
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
   }, []);
 
   const initializeAuth = useCallback(async () => {
-    try {
-      const user = await userAPI.getCurrentUser();
-      queryClient.setQueryData(["/api/user"], user);
-    } catch (error) {
+    console.log("Initializing auth"); // Логування
+    const token = localStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("user");
+
+    console.log("Token:", token); // Логування
+    console.log("Stored user:", storedUser); // Логування
+
+    if (token && storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log("Parsed user:", parsedUser); // Логування
+        if (!parsedUser.id) {
+          throw new Error("Parsed user has no ID");
+        }
+        const isValid = await userAPI.verifyToken(token);
+        console.log("Token is valid:", isValid); // Логування
+        if (isValid) {
+          queryClient.setQueryData(["/api/user"], parsedUser);
+          setCurrentUserId(parsedUser.id);
+        } else {
+          console.log("Token invalid, attempting to fetch user"); // Логування
+          const currentUser = await userAPI.getCurrentUser();
+          if (currentUser?.id) {
+            queryClient.setQueryData(["/api/user"], currentUser);
+            localStorage.setItem("user", JSON.stringify(currentUser));
+            setCurrentUserId(currentUser.id);
+          } else {
+            clearAuthData();
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize auth:", error); // Логування
+        clearAuthData();
+      }
+    } else {
+      console.log("No token or user in localStorage"); // Логування
       clearAuthData();
-    } finally {
-      setInitialized(true);
     }
+    setInitialized(true);
+    console.log("Auth initialized"); // Логування
   }, [clearAuthData]);
 
   useEffect(() => {

@@ -15,14 +15,13 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, differenceInDays, addDays } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import PropertyReviews from "@/components/property/property-reviews";
 
-// Create booking form schema
 const bookingSchema = z.object({
   checkInDate: z.date({
     required_error: "Check-in date is required",
@@ -33,12 +32,13 @@ const bookingSchema = z.object({
   guests: z.number({
     required_error: "Number of guests is required",
   }).min(1),
-}).refine(data => {
-  return data.checkOutDate > data.checkInDate;
-}, {
-  message: "Check-out date must be after check-in date",
-  path: ["checkOutDate"],
-});
+}).refine(
+    (data) => data.checkOutDate > data.checkInDate,
+    {
+      message: "Check-out date must be after check-in date",
+      path: ["checkOutDate"],
+    }
+);
 
 type BookingFormValues = z.infer<typeof bookingSchema>;
 
@@ -49,18 +49,38 @@ export default function PropertyPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [match, params] = useRoute<{ id: string }>("/properties/:id");
 
-  if (!match) {
-    return <div>Property not found</div>;
+  if (!match || !params.id) {
+    return (
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-grow flex items-center justify-center">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle>Property not found</CardTitle>
+              </CardHeader>
+              <CardFooter>
+                <Button onClick={() => navigate("/properties")}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to listings
+                </Button>
+              </CardFooter>
+            </Card>
+          </main>
+          <Footer />
+        </div>
+    );
   }
 
   const propertyId = parseInt(params.id);
 
-  // Fetch property details
   const { data: property, isLoading, error } = useQuery<Property>({
-    queryKey: [`/api/properties/${propertyId}`],
+    queryKey: [`property-${propertyId}`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/properties/${propertyId}`);
+      return response.json();
+    },
   });
 
-  // Form setup
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -68,11 +88,11 @@ export default function PropertyPage() {
     },
   });
 
-  // Booking mutation
   const bookingMutation = useMutation({
     mutationFn: async (data: BookingFormValues) => {
+      if (!property) throw new Error("Property data not available");
       const totalDays = differenceInDays(data.checkOutDate, data.checkInDate);
-      const totalPrice = property!.price * totalDays;
+      const totalPrice = property.price * totalDays;
 
       const bookingData = insertBookingSchema.parse({
         propertyId,
@@ -81,11 +101,10 @@ export default function PropertyPage() {
         guests: data.guests,
         totalPrice,
         userId: user!.id,
-        status: "pending"
+        status: "pending",
       });
 
-      const res = await apiRequest("POST", "/api/bookings", bookingData);
-      return await res.json();
+      return await apiRequest("POST", "/api/bookings", bookingData);
     },
     onSuccess: () => {
       toast({
@@ -117,14 +136,13 @@ export default function PropertyPage() {
     bookingMutation.mutate(data);
   };
 
-  // Calculate total price based on selected dates
   const calculateTotal = () => {
     const checkIn = form.watch("checkInDate");
     const checkOut = form.watch("checkOutDate");
 
-    if (checkIn && checkOut) {
+    if (checkIn && checkOut && property) {
       const days = differenceInDays(checkOut, checkIn);
-      return days > 0 ? days * (property?.price || 0) : 0;
+      return days > 0 ? days * property.price : 0;
     }
 
     return 0;
@@ -134,7 +152,6 @@ export default function PropertyPage() {
     setIsFavorite(!isFavorite);
   };
 
-  // Format rating to show as 4.9 instead of 49
   const formattedRating = property?.rating ? (property.rating / 10).toFixed(1) : null;
 
   if (isLoading) {
@@ -177,7 +194,6 @@ export default function PropertyPage() {
         <Header />
         <main className="flex-grow py-8 px-4 sm:px-6 lg:px-8 bg-gray-50">
           <div className="container mx-auto">
-            {/* Back button */}
             <Button
                 variant="ghost"
                 onClick={() => navigate("/properties")}
@@ -187,7 +203,6 @@ export default function PropertyPage() {
               Back to listings
             </Button>
 
-            {/* Property Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{property.title}</h1>
@@ -211,7 +226,6 @@ export default function PropertyPage() {
               </Button>
             </div>
 
-            {/* Property Image */}
             <div className="rounded-lg overflow-hidden mb-8 max-h-[500px]">
               <img
                   src={property.imageUrl}
@@ -220,9 +234,7 @@ export default function PropertyPage() {
               />
             </div>
 
-            {/* Property Details and Booking Form */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Details */}
               <div className="lg:col-span-2">
                 <Card>
                   <CardHeader>
@@ -272,11 +284,9 @@ export default function PropertyPage() {
                   </CardContent>
                 </Card>
 
-                {/* Property Reviews */}
                 <PropertyReviews propertyId={propertyId} />
               </div>
 
-              {/* Booking Form */}
               <div className="lg:col-span-1">
                 <Card className="sticky top-24">
                   <CardHeader>
@@ -302,11 +312,7 @@ export default function PropertyPage() {
                                               variant="outline"
                                               className={`w-full justify-start text-left font-normal ${!field.value && "text-muted-foreground"}`}
                                           >
-                                            {field.value ? (
-                                                format(field.value, "PPP")
-                                            ) : (
-                                                <span>Pick a date</span>
-                                            )}
+                                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                             <Calendar className="ml-auto h-4 w-4 opacity-50" />
                                           </Button>
                                         </FormControl>
@@ -325,7 +331,6 @@ export default function PropertyPage() {
                                   </FormItem>
                               )}
                           />
-
                           <FormField
                               control={form.control}
                               name="checkOutDate"
@@ -339,11 +344,7 @@ export default function PropertyPage() {
                                               variant="outline"
                                               className={`w-full justify-start text-left font-normal ${!field.value && "text-muted-foreground"}`}
                                           >
-                                            {field.value ? (
-                                                format(field.value, "PPP")
-                                            ) : (
-                                                <span>Pick a date</span>
-                                            )}
+                                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                             <Calendar className="ml-auto h-4 w-4 opacity-50" />
                                           </Button>
                                         </FormControl>
@@ -365,7 +366,6 @@ export default function PropertyPage() {
                                   </FormItem>
                               )}
                           />
-
                           <FormField
                               control={form.control}
                               name="guests"
@@ -394,12 +394,12 @@ export default function PropertyPage() {
                               )}
                           />
                         </div>
-
-                        {/* Price calculation */}
                         {form.watch("checkInDate") && form.watch("checkOutDate") && (
                             <div className="border-t border-gray-200 pt-4 mt-4">
                               <div className="flex justify-between mb-2">
-                                <span>{property.price} x {differenceInDays(form.watch("checkOutDate"), form.watch("checkInDate"))} nights</span>
+                            <span>
+                              ${property.price} x {differenceInDays(form.watch("checkOutDate"), form.watch("checkInDate"))} nights
+                            </span>
                                 <span>${calculateTotal()}</span>
                               </div>
                               <div className="flex justify-between font-semibold border-t border-gray-200 pt-4 mt-4">
@@ -408,7 +408,6 @@ export default function PropertyPage() {
                               </div>
                             </div>
                         )}
-
                         <Button
                             type="submit"
                             className="w-full bg-primary hover:bg-primary-dark"

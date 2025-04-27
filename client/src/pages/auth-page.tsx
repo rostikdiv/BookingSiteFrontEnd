@@ -18,7 +18,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function AuthPage() {
     const [activeTab, setActiveTab] = useState<string>("login");
     const [location, navigate] = useLocation();
-    const { user, loginMutation, registerMutation } = useAuth();
+    const { user, loginMutation, registerMutation, isLoading } = useAuth();
 
     const loginForm = useForm<LoginValues>({
         resolver: zodResolver(loginSchema),
@@ -38,24 +38,28 @@ export default function AuthPage() {
     });
 
     useEffect(() => {
-        if (user) navigate("/");
-    }, [user, navigate]);
+        if (user && !isLoading) navigate("/profile");
+    }, [user, isLoading, navigate]);
 
     const onLoginSubmit = (data: LoginValues) => {
         loginMutation.mutate(data, {
-            onSuccess: () => navigate("/"),
+            onSuccess: () => navigate("/profile"),
             onError: (error) => console.error("Помилка входу:", error),
         });
     };
 
     const onRegisterSubmit = (data: RegisterValues) => {
         registerMutation.mutate(data, {
-            onSuccess: () => navigate("/"),
+            onSuccess: () => navigate("/profile"),
             onError: (error) => console.error("Помилка реєстрації:", error),
         });
     };
 
-    if (user) return <Redirect to="/" />;
+    if (isLoading) {
+        return <div className="text-center py-10">Завантаження...</div>;
+    }
+
+    if (user) return <Redirect to="/profile" />;
 
     return (
         <div className="min-h-screen grid lg:grid-cols-2">
