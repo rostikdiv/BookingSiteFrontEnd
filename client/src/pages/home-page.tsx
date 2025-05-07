@@ -14,7 +14,6 @@ export default function HomePage() {
       <main className="flex-grow">
         <HeroSection />
         <FeaturesSection />
-        <PropertyShowcase />
         <TestimonialsSection />
         <CTASection />
         <FaqSection />

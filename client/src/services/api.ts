@@ -75,15 +75,6 @@ export const userAPI = {
   delete: async (id: number): Promise<void> => {
     await api.get(`/user/delete/byId/${id}`);
   },
-  // verifyToken: async (token: string): Promise<boolean> => {
-  //   try {
-  //     const response = await api.post("/user/verify-token", { token });
-  //     return response.data.isValid;
-  //   } catch {
-  //     return false;
-  //   }
-  // },
-
   getCurrentUser: async (): Promise<User | null> => {
     try {
       const response = await api.get("/user/me", {
@@ -98,7 +89,6 @@ export const userAPI = {
       return null;
     }
   },
-
   verifyToken: async (token: string): Promise<boolean> => {
     console.log("Verifying token:", token); // Логування
     try {
@@ -114,12 +104,10 @@ export const userAPI = {
       throw error;
     }
   },
-
   logout: async () => {
     await api.post("/user/logout");
     console.log("Logout request sent"); // Логування
   },
-
   register: async (data: RegisterData): Promise<User> => {
     const response = await api.post("/user", data);
     console.log("Register response:", response.data); // Логування
@@ -187,6 +175,11 @@ export const reviewAPI = {
   getByHouseId: async (houseId: number): Promise<Review[]> => {
     const response = await api.get(`/review/byHouse/${houseId}`);
     console.log("Backend response for /review/byHouse/", houseId, ":", response.data);
+    return Array.isArray(response.data) ? response.data : [];
+  },
+  getByAuthorId: async (authorId: number): Promise<Review[]> => {
+    const response = await api.get(`/review/byAuthor/${authorId}`);
+    console.log("Backend response for /review/byAuthor/", authorId, ":", response.data);
     return Array.isArray(response.data) ? response.data : [];
   },
   create: async (data: CreateReviewPayload, houseForRentId: number): Promise<Review> => {

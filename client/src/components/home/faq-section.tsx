@@ -14,45 +14,49 @@ type FaqItem = {
 export default function FaqSection() {
   const faqs: FaqItem[] = [
     {
-      question: "How does StayEase work?",
-      answer: "StayEase helps you find and book vacation rentals from our curated list of properties. Browse listings, filter by your preferences, and book securely through our platform. Property owners can also list their properties after passing our verification process."
+      question: "Як працює StayEase?",
+      answer: "StayEase допомагає вам знаходити та бронювати помешкання для відпочинку з нашого ретельно підібраного списку об'єктів. Переглядайте оголошення, фільтруйте за вашими уподобаннями та бронюйте безпечно через нашу платформу. Власники нерухомості також можуть розміщувати свої об'єкти після проходження нашого процесу верифікації."
     },
     {
-      question: "When will StayEase launch?",
-      answer: "We're planning to launch in Q3 2023. Join our waitlist to be notified when we go live and to get access to exclusive early user benefits."
+      question: "Коли запуститься StayEase?",
+      answer: "Ми плануємо запуск у третьому кварталі 2023 року. Приєднуйтесь до нашого списку очікування, щоб отримати сповіщення про запуск та доступ до ексклюзивних переваг для ранніх користувачів."
     },
     {
-      question: "How do I list my property on StayEase?",
-      answer: "Property owners can register and submit their properties for review. Our team will verify details and photographs to ensure quality standards are met before listing on our platform. More details will be available at launch."
+      question: "Як мені розмістити свою нерухомість на StayEase?",
+      answer: "Власники нерухомості можуть зареєструватися та подати свої об'єкти на перевірку. Наша команда перевірить деталі та фотографії, щоб переконатися, що вони відповідають стандартам якості, перш ніж розмістити їх на платформі. Більше деталей буде доступно після запуску."
     },
     {
-      question: "Is there a booking fee?",
-      answer: "StayEase charges a small service fee to guests, typically 5-10% of the booking subtotal. This fee helps us maintain the platform and provide 24/7 customer support. Property owners pay a commission on successful bookings."
+      question: "Чи є плата за бронювання?",
+      answer: "StayEase стягує невелику сервісну плату з гостей, зазвичай 5-10% від суми бронювання. Ця плата допомагає нам підтримувати платформу та надавати цілодобову підтримку клієнтів. Власники нерухомості сплачують комісію за успішні бронювання."
     }
   ];
 
   return (
-    <section className="py-12 md:py-20 bg-gray-50">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="font-poppins font-semibold text-2xl md:text-3xl text-gray-900 mb-4">Frequently Asked Questions</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">Find answers to common questions about StayEase.</p>
+      <section className="py-12 md:py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="font-poppins font-semibold text-2xl md:text-3xl text-gray-900 mb-4">
+              Часті запитання
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Знайдіть відповіді на поширені запитання про StayEase.
+            </p>
+          </div>
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq, index) => (
+                  <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionTrigger className="text-left font-medium text-lg text-gray-900">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </div>
-        <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="w-full">
-            {faqs.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger className="text-left font-medium text-lg text-gray-900">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      </div>
-    </section>
+      </section>
   );
 }

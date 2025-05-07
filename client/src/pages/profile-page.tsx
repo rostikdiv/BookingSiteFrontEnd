@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { userAPI, propertyAPI, bookingAPI } from "@/services/api";
+import { userAPI, propertyAPI, bookingAPI, reviewAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, HouseForRent, MyBookingOfferDTO, ReceivedBookingOfferDTO, Photo } from "@/types/models";
+import { User, HouseForRent, MyBookingOfferDTO, ReceivedBookingOfferDTO, Photo, Review } from "@/types/models";
 import PropertyCard from "@/components/property/property-card";
 import Modal from "react-modal";
 import { format } from "date-fns";
@@ -31,13 +31,18 @@ export default function ProfilePage() {
     });
 
     // Стан для активної вкладки
-    const [activeTab, setActiveTab] = useState<"houses" | "myOffers" | "receivedOffers">("houses");
+    const [activeTab, setActiveTab] = useState<"houses" | "myOffers" | "receivedOffers" | "comments">("houses");
 
     // Стан для модального вікна редагування оголошення
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedHouse, setSelectedHouse] = useState<HouseForRent | null>(null);
     const [editHouseData, setEditHouseData] = useState<Partial<HouseForRent>>({});
     const [newPhotoUrl, setNewPhotoUrl] = useState<string>("");
+
+    // Стан для модального вікна редагування коментаря
+    const [isEditCommentModalOpen, setIsEditCommentModalOpen] = useState(false);
+    const [selectedComment, setSelectedComment] = useState<Review | null>(null);
+    const [editCommentData, setEditCommentData] = useState<Partial<Review>>({});
 
     // Оновлення formData при зміні user
     useEffect(() => {
@@ -66,7 +71,7 @@ export default function ProfilePage() {
             }
             return await propertyAPI.getByOwnerId(user.id);
         },
-        enabled: !!user && !!user.id, // Запит виконується лише якщо user і user.id існують
+        enabled: !!user && !!user.id,
     });
 
     // Завантаження пропозицій оренди, створених користувачем
@@ -91,6 +96,19 @@ export default function ProfilePage() {
                 return [];
             }
             return await bookingAPI.getBookingOffersForOwnerHouses(user.id);
+        },
+        enabled: !!user && !!user.id,
+    });
+
+    // Завантаження коментарів користувача
+    const { data: comments, refetch: refetchComments } = useQuery({
+        queryKey: ["user-comments", user?.id],
+        queryFn: async () => {
+            if (!user || !user.id) {
+                console.warn("User or user.id is undefined, returning empty array");
+                return [];
+            }
+            return await reviewAPI.getByAuthorId(user.id);
         },
         enabled: !!user && !!user.id,
     });
@@ -197,10 +215,55 @@ export default function ProfilePage() {
                 description: "Пропозиція оренди успішно видалена.",
             });
             refetchMyBookingOffers();
+            refetchReceivedBookingOffers();
         },
         onError: (err: Error) => {
             toast({
                 title: "Помилка скасування",
+                description: err.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Мутація для редагування коментаря
+    const updateCommentMutation = useMutation({
+        mutationFn: async (data: Partial<Review>) => {
+            if (!selectedComment) throw new Error("Коментар не вибраний");
+            return await reviewAPI.update(selectedComment.id, data);
+        },
+        onSuccess: () => {
+            toast({
+                title: "Коментар оновлено",
+                description: "Ваш коментар успішно оновлено.",
+            });
+            setIsEditCommentModalOpen(false);
+            refetchComments();
+        },
+        onError: (err: Error) => {
+            toast({
+                title: "Помилка оновлення",
+                description: err.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Мутація для видалення коментаря
+    const deleteCommentMutation = useMutation({
+        mutationFn: async (commentId: number) => {
+            await reviewAPI.delete(commentId);
+        },
+        onSuccess: () => {
+            toast({
+                title: "Коментар видалено",
+                description: "Ваш коментар успішно видалено.",
+            });
+            refetchComments();
+        },
+        onError: (err: Error) => {
+            toast({
+                title: "Помилка видалення",
                 description: err.message,
                 variant: "destructive",
             });
@@ -264,6 +327,23 @@ export default function ProfilePage() {
             ...prev,
             photos: (prev.photos || []).filter((_, i) => i !== index),
         }));
+    };
+
+    const handleEditComment = (commentId: number) => {
+        const commentToEdit = comments?.find((comment: Review) => comment.id === commentId);
+        if (commentToEdit) {
+            setSelectedComment(commentToEdit);
+            setEditCommentData({
+                comment: commentToEdit.comment,
+                rating: commentToEdit.rating,
+            });
+            setIsEditCommentModalOpen(true);
+        }
+    };
+
+    const handleUpdateComment = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        updateCommentMutation.mutate(editCommentData);
     };
 
     if (authLoading) {
@@ -368,7 +448,7 @@ export default function ProfilePage() {
 
                     {/* Вкладки */}
                     <div className="lg:col-span-2">
-                        <div className="flex gap-4 mb-4">
+                        <div className="flex gap-4 mb-4 flex-wrap">
                             <Button
                                 variant={activeTab === "houses" ? "default" : "outline"}
                                 onClick={() => setActiveTab("houses")}
@@ -386,6 +466,12 @@ export default function ProfilePage() {
                                 onClick={() => setActiveTab("receivedOffers")}
                             >
                                 Отримані пропозиції оренди
+                            </Button>
+                            <Button
+                                variant={activeTab === "comments" ? "default" : "outline"}
+                                onClick={() => setActiveTab("comments")}
+                            >
+                                Мої коментарі
                             </Button>
                         </div>
 
@@ -462,12 +548,61 @@ export default function ProfilePage() {
                                                     <p><strong>Помешкання:</strong> {offer.houseTitle}</p>
                                                     <p><strong>Початок:</strong> {format(new Date(offer.offerFrom), "PPP")}</p>
                                                     <p><strong>Кінець:</strong> {format(new Date(offer.offerTo), "PPP")}</p>
+                                                    <Button
+                                                        variant="destructive"
+                                                        className="mt-4"
+                                                        onClick={() => deleteBookingOfferMutation.mutate(offer.id)}
+                                                        disabled={deleteBookingOfferMutation.isPending}
+                                                    >
+                                                        {deleteBookingOfferMutation.isPending ? "Скасування..." : "Скасувати пропозицію"}
+                                                    </Button>
                                                 </CardContent>
                                             </Card>
                                         ))}
                                     </div>
                                 ) : (
                                     <p className="text-gray-500">У вас поки немає отриманих пропозицій оренди.</p>
+                                )}
+                            </>
+                        )}
+
+                        {/* Вкладка "Мої коментарі" */}
+                        {activeTab === "comments" && (
+                            <>
+                                <h2 className="text-2xl font-semibold mb-4">Мої коментарі</h2>
+                                {comments && comments.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {comments.map((comment: Review) => (
+                                            <Card key={comment.id}>
+                                                <CardHeader>
+                                                    <CardTitle>Коментар #{comment.id}</CardTitle>
+                                                </CardHeader>
+                                                <CardContent>
+                                                    <p><strong>Помешкання:</strong> {comment.houseForRentId}</p>
+                                                    <p><strong>Рейтинг:</strong> {comment.rating} / 5</p>
+                                                    <p><strong>Коментар:</strong> {comment.comment || "Без коментаря"}</p>
+                                                    <p><strong>Дата:</strong> {format(new Date(comment.createdAt), "PPP")}</p>
+                                                    <div className="flex gap-2 mt-4">
+                                                        <Button
+                                                            onClick={() => handleEditComment(comment.id)}
+                                                            variant="outline"
+                                                        >
+                                                            Редагувати
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            onClick={() => deleteCommentMutation.mutate(comment.id)}
+                                                            disabled={deleteCommentMutation.isPending}
+                                                        >
+                                                            {deleteCommentMutation.isPending ? "Видалення..." : "Видалити"}
+                                                        </Button>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-500">У вас поки немає коментарів.</p>
                                 )}
                             </>
                         )}
@@ -621,6 +756,45 @@ export default function ProfilePage() {
                                 Скасувати
                             </Button>
                         </div>
+                    </div>
+                </Modal>
+
+                {/* Модальне вікно для редагування коментаря */}
+                <Modal
+                    isOpen={isEditCommentModalOpen}
+                    onRequestClose={() => setIsEditCommentModalOpen(false)}
+                    className="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full mx-auto mt-20"
+                    overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+                >
+                    <div className="flex flex-col">
+                        <h2 className="text-2xl font-bold mb-4">Редагувати коментар</h2>
+                        <form id="edit-comment-form" onSubmit={handleUpdateComment} className="space-y-4">
+                            <div>
+                                <Label>Коментар</Label>
+                                <Input
+                                    value={editCommentData.comment || ""}
+                                    onChange={(e) => setEditCommentData({ ...editCommentData, comment: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <Label>Рейтинг (1-5)</Label>
+                                <Input
+                                    type="number"
+                                    min="1"
+                                    max="5"
+                                    value={editCommentData.rating || ""}
+                                    onChange={(e) => setEditCommentData({ ...editCommentData, rating: Number(e.target.value) })}
+                                />
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                                <Button type="submit" disabled={updateCommentMutation.isPending}>
+                                    {updateCommentMutation.isPending ? "Оновлення..." : "Зберегти"}
+                                </Button>
+                                <Button type="button" variant="outline" onClick={() => setIsEditCommentModalOpen(false)}>
+                                    Скасувати
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </Modal>
             </main>

@@ -27,7 +27,7 @@ export default function Header() {
 
   const getInitials = (user: any) => {
     if (!user || (!user.firstName && !user.lastName)) {
-      return "U";
+      return "К";
     }
 
     const firstName = user.firstName || "";
@@ -37,10 +37,8 @@ export default function Header() {
   };
 
   const navigationLinks = [
-    { title: "Home", path: "/" },
-    { title: "Explore", path: "/properties" },
-    { title: "About", path: "/about" },
-    { title: "Contact", path: "/contact" },
+    { title: "Головна", path: "/" },
+    { title: "Огляд", path: "/properties" }
   ];
 
   return (
@@ -87,37 +85,27 @@ export default function Header() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem>
                         <Link href="/profile" className="w-full">
-                          <Button variant="ghost" className="w-full justify-start">My Profile</Button>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/bookings" className="w-full">
-                          <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Link href="/my-properties" className="w-full">
-                          <Button variant="ghost" className="w-full justify-start">My Properties</Button>
+                          <Button variant="ghost" className="w-full justify-start">Мій профіль</Button>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Link href="/add-house" className="w-full">
-                          <Button variant="ghost" className="w-full justify-start">Add Property</Button>
+                          <Button variant="ghost" className="w-full justify-start">Додати помешкання</Button>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleLogout}>
-                        Logout
+                        Вийти
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
               ) : (
                   <>
                     <Button variant="outline" asChild>
-                      <Link href="/auth">Sign In</Link>
+                      <Link href="/auth">Увійти</Link>
                     </Button>
                     <Button asChild>
-                      <Link href="/auth?tab=register">Sign Up</Link>
+                      <Link href="/auth?tab=register">Зареєструватися</Link>
                     </Button>
                   </>
               )}
@@ -127,7 +115,7 @@ export default function Header() {
                   type="button"
                   className="text-muted-foreground hover:text-primary"
                   onClick={toggleMenu}
-                  aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+                  aria-label={isMenuOpen ? "Закрити меню" : "Відкрити меню"}
               >
                 {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
@@ -169,16 +157,10 @@ export default function Header() {
                     </div>
                     <div className="space-y-1">
                       <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">My Profile</Button>
-                      </Link>
-                      <Link href="/bookings" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">My Bookings</Button>
-                      </Link>
-                      <Link href="/my-properties" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">My Properties</Button>
+                        <Button variant="ghost" className="w-full justify-start">Мій профіль</Button>
                       </Link>
                       <Link href="/add-house" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">Add Property</Button>
+                        <Button variant="ghost" className="w-full justify-start">Додати помешкання</Button>
                       </Link>
                       <Button
                           variant="ghost"
@@ -188,7 +170,7 @@ export default function Header() {
                             setIsMenuOpen(false);
                           }}
                       >
-                        Logout
+                        Вийти
                       </Button>
                     </div>
                   </div>
@@ -200,14 +182,14 @@ export default function Header() {
                         asChild
                         onClick={() => setIsMenuOpen(false)}
                     >
-                      <Link href="/auth">Sign In</Link>
+                      <Link href="/auth">Увійти</Link>
                     </Button>
                     <Button
                         className="w-full"
                         asChild
                         onClick={() => setIsMenuOpen(false)}
                     >
-                      <Link href="/auth?tab=register">Sign Up</Link>
+                      <Link href="/auth?tab=register">Зареєструватися</Link>
                     </Button>
                   </div>
               )}
