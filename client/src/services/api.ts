@@ -100,7 +100,7 @@ export const userAPI = {
       console.log("Verify token response:", response.data); // Логування
       return response.data;
     } catch (error) {
-      console.error("Verify token failed:", error.response?.data || error.message);
+      console.error("Verify token failed:");
       throw error;
     }
   },
