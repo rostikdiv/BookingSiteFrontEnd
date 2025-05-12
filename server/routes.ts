@@ -244,39 +244,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Поиск объектов недвижимости с фильтрами
   app.post("/api/ForRent/search", async (req, res) => {
     try {
-      // Получаем все объекты недвижимости и фильтруем на стороне сервера
       const properties = await storage.getProperties();
       const filters = req.body;
       
-      // Применяем фильтры
       const filtered = properties.filter(property => {
         let isMatch = true;
         
-        // Фильтр по городу
         if (filters.city && property.location.toLowerCase().indexOf(filters.city.toLowerCase()) === -1) {
           isMatch = false;
         }
         
-        // Фильтр по цене
         if ((filters.minPrice && property.price < filters.minPrice) ||
             (filters.maxPrice && property.price > filters.maxPrice)) {
           isMatch = false;
         }
         
-        // Фильтр по количеству комнат
         if (filters.minRooms && property.bedrooms < filters.minRooms) {
           isMatch = false;
         }
         
-        // Фильтр по площади
-        if (filters.minArea && property.price < filters.minArea) { // Используем price вместо area, т.к. area нет в Property
+        if (filters.minArea && property.price < filters.minArea) {
           isMatch = false;
         }
         
-        // Фильтр по ключевому слову (поиск по названию и описанию)
         if (filters.keyword && !(
           property.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
           property.description.toLowerCase().includes(filters.keyword.toLowerCase())
@@ -293,15 +285,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API routes
-  // All routes are prefixed with /api
-  
-  // Waitlist endpoint
+
   app.post("/api/waitlist", async (req, res) => {
     try {
       const validatedData = insertWaitlistSchema.parse(req.body);
       
-      // Check if email already exists
       const existingEntry = await storage.getWaitlistByEmail(validatedData.email);
       if (existingEntry) {
         return res.status(400).json({ message: "Email already registered in waitlist" });

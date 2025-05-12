@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFilteredProperties } from "@/services/properties-api";
 import PropertyCard from "@/components/property/property-card-api";
 import Header from "@/components/layout/header";
@@ -10,17 +10,35 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, FilterX } from "lucide-react";
+import { Loader2, FilterX, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function PropertiesPage() {
   const [filters, setFilters] = useState<HouseFilterDTO>({});
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
-  const { data: properties, isLoading, error } = useFilteredProperties(filters);
+  const { data: properties = [], isLoading, error, refetch } = useFilteredProperties(filters);
+
+  useEffect(() => {
+    setCurrentPage(1); // Скидаємо сторінку при зміні фільтрів
+  }, [filters]);
+
+  const totalItems = properties.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentProperties = properties.slice(startIndex, endIndex);
 
   const handleFilterChange = (key: keyof HouseFilterDTO, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => {
+      if (value === undefined || (["hasWifi", "hasParking", "hasPool"].includes(key) && value === false)) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const handlePriceChange = (value: number[]) => {
@@ -31,6 +49,27 @@ export default function PropertiesPage() {
   const resetFilters = () => {
     setFilters({});
     setPriceRange([0, 1000]);
+    setCurrentPage(1);
+    refetch();
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handlePageClick = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -98,9 +137,7 @@ export default function PropertiesPage() {
                     <div className="md:col-span-2 lg:col-span-1">
                       <div className="flex justify-between items-center">
                         <Label>Діапазон цін</Label>
-                        <span className="text-sm text-gray-500">
-                      ${priceRange[0]} - ${priceRange[1]}
-                    </span>
+                        <span className="text-sm text-gray-500">${priceRange[0]} - ${priceRange[1]}</span>
                       </div>
                       <Slider
                           defaultValue={[0, 1000]}
@@ -206,12 +243,51 @@ export default function PropertiesPage() {
                     Спробувати ще раз
                   </Button>
                 </div>
-            ) : properties && properties.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {properties.map((property) => (
-                      <PropertyCard key={property.id} property={property} />
-                  ))}
-                </div>
+            ) : currentProperties.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {currentProperties.map((property) => (
+                        <PropertyCard key={property.id} property={property} />
+                    ))}
+                  </div>
+
+                  {totalPages > 1 && (
+                      <div className="mt-8 flex justify-center items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handlePrevPage}
+                            disabled={currentPage === 1}
+                            className="flex items-center gap-1"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Попередня
+                        </Button>
+
+                        <div className="flex gap-1">
+                          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                              <Button
+                                  key={page}
+                                  variant={currentPage === page ? "default" : "outline"}
+                                  onClick={() => handlePageClick(page)}
+                                  className={`h-8 w-8 p-0 ${currentPage === page ? "bg-primary text-white" : ""}`}
+                              >
+                                {page}
+                              </Button>
+                          ))}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            onClick={handleNextPage}
+                            disabled={currentPage === totalPages}
+                            className="flex items-center gap-1"
+                        >
+                          Наступна
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                  )}
+                </>
             ) : (
                 <div className="text-center py-20">
                   <p className="text-gray-500 font-medium">Не знайдено помешкань за вашими критеріями.</p>

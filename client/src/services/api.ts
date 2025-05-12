@@ -117,37 +117,37 @@ export const userAPI = {
 
 export const propertyAPI = {
   getAll: async (): Promise<HouseForRent[]> => {
-    const response = await api.get("/ForRent");
+    const response = await api.get("/forRent");
     return response.data;
   },
   getById: async (id: number): Promise<HouseForRent> => {
-    const response = await api.get(`/ForRent/getById/${id}`);
+    const response = await api.get(`/forRent/getById/${id}`);
     return response.data;
   },
   getByOwnerId: async (ownerId: number): Promise<HouseForRent[]> => {
-    const response = await api.get(`/ForRent/getById/all/${ownerId}`);
+    const response = await api.get(`/forRent/getById/all/${ownerId}`);
     return response.data;
   },
   create: async (data: CreateHouseData, userId: number) => {
     console.log("Adapted House Data for POST /toUser:", data);
-    const response = await api.post<HouseForRent>(`/ForRent/toUser/${userId}`, data);
+    const response = await api.post<HouseForRent>(`/forRent/toUser/${userId}`, data);
     return response.data;
   },
   update: async (id: number, data: Partial<HouseForRent>): Promise<HouseForRent> => {
-    const response = await api.put(`/ForRent/edit/${id}`, data);
+    const response = await api.put(`/forRent/edit/${id}`, data);
     return response.data;
   },
   delete: async (id: number): Promise<void> => {
-    await api.get(`/ForRent/delete/byId/${id}`);
+    await api.get(`/forRent/delete/byId/${id}`);
   },
   search: async (filters: HouseFilterDTO): Promise<HouseForRent[]> => {
-    const response = await api.post("/ForRent/search", filters);
+    const response = await api.post("/forRent/search", filters);
     return response.data;
   },
   addPhoto: async (houseId: number, imageUrl: string) => {
     const photoData = { imageUrl };
-    console.log("Photo Data for POST /toPhoto:", photoData);
-    const response = await api.post<HouseForRent>(`/api/photos/toPhoto/${houseId}`, photoData);
+    console.log("Photo Data for POST /toHouse:", photoData);
+    const response = await api.post<HouseForRent>(`/photos/toHouse/${houseId}`, photoData);
     return response.data;
   },
 };
@@ -183,7 +183,7 @@ export const reviewAPI = {
     return Array.isArray(response.data) ? response.data : [];
   },
   create: async (data: CreateReviewPayload, houseForRentId: number): Promise<Review> => {
-    const response = await api.post(`/review/toReview/${houseForRentId}`, data);
+    const response = await api.post(`/review/toHouse/${houseForRentId}`, data);
     return response.data;
   },
 };
@@ -212,8 +212,8 @@ export const bookingAPI = {
       offerFrom: bookingData.offerFrom,
       offerTo: bookingData.offerTo,
     };
-    console.log("Adapted Booking Data for POST /toOffer:", adaptedData);
-    const response = await api.post<HouseForRent>(`/bookOffer/toOffer/${houseOfferId}`, adaptedData);
+    console.log("Adapted Booking Data for POST /toHouse:", adaptedData);
+    const response = await api.post<HouseForRent>(`/bookOffer/toHouse/${houseOfferId}`, adaptedData);
     return response.data;
   },
   update: async (id: number, data: Partial<BookingOffer>): Promise<BookingOffer> => {
